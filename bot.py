@@ -4,17 +4,22 @@ from flask import Flask, request
 
 TOKEN = os.environ["BOT_TOKEN"]
 API = f"https://api.telegram.org/bot{TOKEN}"
-ing"
+
 app = Flask(__name__)
 
 
 def tg(method, data):
-    return requests.post(f"{API}/{method}", json=data, timeout=20)
+    return requests.post(
+        f"{API}/{method}",
+        json=data,
+        timeout=20
+    )
 
 
 @app.route("/")
 def home():
-    return open("index.html", encoding="utf-8").read()
+    with open("index.html", encoding="utf-8") as f:
+        return f.read()
 
 
 @app.route("/health")
@@ -26,7 +31,6 @@ def health():
 def webhook():
     update = request.json or {}
 
-    # Нажата кнопка "Купить тест"
     callback = update.get("callback_query")
 
     if callback:
@@ -35,12 +39,10 @@ def webhook():
         data = callback.get("data")
 
         if data == "buy_test":
-            # Убираем "часики" после нажатия кнопки
             tg("answerCallbackQuery", {
                 "callback_query_id": callback_id
             })
 
-            # Счёт на 200 Telegram Stars
             tg("sendInvoice", {
                 "chat_id": chat_id,
                 "title": "Book Quiz",
@@ -64,14 +66,12 @@ def webhook():
 
     chat_id = message["chat"]["id"]
 
-    # Успешная оплата
     if message.get("successful_payment"):
         tg("sendMessage", {
             "chat_id": chat_id,
             "text": (
                 "✅ Оплата прошла!\n\n"
-                "Тест разблокирован.\n"
-                "Нажми кнопку ниже и проходи его 👇"
+                "Тест разблокирован."
             ),
             "reply_markup": {
                 "inline_keyboard": [[
@@ -84,9 +84,9 @@ def webhook():
                 ]]
             }
         })
+
         return "ok"
 
-    # /start
     if message.get("text") == "/start":
         tg("sendMessage", {
             "chat_id": chat_id,
