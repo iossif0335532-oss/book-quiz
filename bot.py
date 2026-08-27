@@ -4,7 +4,7 @@ from flask import Flask, request
 
 TOKEN = os.environ["BOT_TOKEN"]
 API = f"https://api.telegram.org/bot{TOKEN}"
-
+ing"
 app = Flask(__name__)
 
 
@@ -14,7 +14,7 @@ def tg(method, data):
 
 @app.route("/")
 def home():
-    return "Book Quiz Bot is running"
+    return open("index.html", encoding="utf-8").read()
 
 
 @app.route("/health")
