@@ -287,20 +287,10 @@ function show(){
   renderResult(key,match,main,extras,false,null);
 }
 
-const saved=getSavedResult();
-if(saved&&saved.key){
-  $('intro').classList.add('hidden');
-  $('res').classList.remove('hidden');
-  renderResult(saved.key,saved.match,saved.main,saved.extras,true,saved.date);
-}else{
-  try{
-    if(user){
-      tg.MainButton.setText('Погнали 🎲');
-      tg.MainButton.show();
-      tg.MainButton.onClick(()=>startQuiz());
-    }
-  }catch(e){}
-}
-</script>
-</body>
-</html>
+try{
+  if(user){
+    tg.MainButton.setText('Погнали 🎲');
+    tg.MainButton.show();
+    tg.MainButton.onClick(()=>startQuiz());
+  }
+}catch(e){}
