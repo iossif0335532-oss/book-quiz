@@ -1,8 +1,23 @@
-﻿import json
+```python
+import json
 import os
 
-DATABASE = r"C:\Users\User\Desktop\recommendation_database.json"
-RESULT_FILE = r"C:\Users\User\Desktop\last_test_result.json"
+# ============================================================
+# НАСТРОЙКИ
+# ============================================================
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+DATABASE = os.path.join(
+    BASE_DIR,
+    "recommendation_database.json"
+)
+
+RESULT_FILE = os.path.join(
+    BASE_DIR,
+    "last_test_result.json"
+)
+
 
 QUESTIONS = [
     ("Как часто вы откладываете важные дела?", "прокрастинация"),
@@ -29,6 +44,7 @@ QUESTIONS = [
     ("Насколько легко вам выражать свои мысли?", "общение"),
 ]
 
+
 PROBLEMS = [
     "прокрастинация",
     "мотивация",
@@ -41,6 +57,10 @@ PROBLEMS = [
 ]
 
 
+# ============================================================
+# ЗАГРУЗКА КНИГ
+# ============================================================
+
 def load_books():
     if not os.path.exists(DATABASE):
         print()
@@ -49,8 +69,13 @@ def load_books():
         return []
 
     try:
-        with open(DATABASE, "r", encoding="utf-8-sig") as f:
+        with open(
+            DATABASE,
+            "r",
+            encoding="utf-8-sig"
+        ) as f:
             data = json.load(f)
+
     except Exception as e:
         print()
         print("ОШИБКА загрузки базы:")
@@ -75,6 +100,10 @@ def load_books():
     return books
 
 
+# ============================================================
+# ТЕМЫ
+# ============================================================
+
 def normalize_themes(book):
     themes = book.get("themes", [])
 
@@ -89,15 +118,9 @@ def normalize_themes(book):
 
 
 def is_valid_book(book):
-    """
-    Книга считается пригодной для рекомендации только тогда,
-    когда в базе есть реальные темы.
-
-    Мы НЕ анализируем описание, название или случайные слова.
-    Используем только themes из recommendation_database.json.
-    """
-
-    title = str(book.get("title", "")).strip()
+    title = str(
+        book.get("title", "")
+    ).strip()
 
     if not title:
         return False
@@ -109,6 +132,10 @@ def is_valid_book(book):
 
     return True
 
+
+# ============================================================
+# ФИЛЬТР ХУДОЖЕСТВЕННЫХ КНИГ
+# ============================================================
 
 FICTION_TITLES = {
     "1984",
@@ -131,6 +158,7 @@ FICTION_TITLES = {
     "???????????? ?????? ????? ?????????",
 }
 
+
 FICTION_WORDS = [
     "?????",
     "??????",
@@ -144,10 +172,19 @@ FICTION_WORDS = [
     "?????",
 ]
 
+
 def is_fiction(book):
-    title = str(book.get("title", "")).strip().lower()
-    category = str(book.get("category", "")).strip().lower()
-    book_type = str(book.get("type", "")).strip().lower()
+    title = str(
+        book.get("title", "")
+    ).strip().lower()
+
+    category = str(
+        book.get("category", "")
+    ).strip().lower()
+
+    book_type = str(
+        book.get("type", "")
+    ).strip().lower()
 
     if title in FICTION_TITLES:
         return True
@@ -156,7 +193,13 @@ def is_fiction(book):
         if len(fiction_title) > 4 and fiction_title in title:
             return True
 
-    combined = title + " " + category + " " + book_type
+    combined = (
+        title +
+        " " +
+        category +
+        " " +
+        book_type
+    )
 
     for word in FICTION_WORDS:
         if word in combined:
@@ -165,11 +208,11 @@ def is_fiction(book):
     return False
 
 
+# ============================================================
+# ПОЛУЧЕНИЕ ТЕМ
+# ============================================================
+
 def get_themes(book):
-    """
-    ?????????? ???? ????? ?? ??????? ????.
-    ???????????? ????????? ????????? ???????? ????.
-    """
     possible_fields = [
         "themes",
         "theme",
@@ -180,9 +223,11 @@ def get_themes(book):
     ]
 
     for field in possible_fields:
+
         value = book.get(field)
 
         if isinstance(value, list):
+
             return {
                 str(item).strip().lower()
                 for item in value
@@ -190,28 +235,28 @@ def get_themes(book):
             }
 
         if isinstance(value, str):
+
             return {
                 item.strip().lower()
-                for item in value.replace(";", ",").split(",")
+                for item in value.replace(
+                    ";",
+                    ","
+                ).split(",")
                 if item.strip()
             }
 
     return set()
 
 
+# ============================================================
+# ФИНАЛЬНЫЙ АЛГОРИТМ
+# ============================================================
+
 def calculate_score(book, profile, main_problem):
-    """
-    Финальный персональный рейтинг книги.
 
-    Основа:
-    1. Главная проблема пользователя.
-    2. Сила выраженности проблемы.
-    3. Совпадение дополнительных проблем.
-    4. Точность попадания.
-    5. Небольшой штраф за слишком универсальные книги.
-    """
-
-    title = str(book.get("title", "")).strip()
+    title = str(
+        book.get("title", "")
+    ).strip()
 
     if not title:
         return 0, []
@@ -224,13 +269,17 @@ def calculate_score(book, profile, main_problem):
     matched = [
         problem
         for problem in PROBLEMS
-        if problem in themes and profile.get(problem, 0) >= 3
+        if problem in themes
+        and profile.get(problem, 0) >= 3
     ]
 
     if not matched:
         return 0, []
 
-    main_score = profile.get(main_problem, 0)
+    main_score = profile.get(
+        main_problem,
+        0
+    )
 
     # --------------------------------------------------------
     # 1. ОСНОВНОЙ БАЛЛ
@@ -239,11 +288,11 @@ def calculate_score(book, profile, main_problem):
     total = 0
 
     if main_problem in matched:
-        # Главная проблема имеет максимальный вес.
+
         total += main_score * 200
 
     else:
-        # Книга без главной проблемы сильно проигрывает.
+
         total -= 300
 
     # --------------------------------------------------------
@@ -255,12 +304,15 @@ def calculate_score(book, profile, main_problem):
         if problem == main_problem:
             continue
 
-        user_score = profile.get(problem, 0)
+        user_score = profile.get(
+            problem,
+            0
+        )
 
         total += user_score * 50
 
     # --------------------------------------------------------
-    # 3. БОНУС ЗА СИЛЬНОЕ ПОПАДАНИЕ
+    # 3. СИЛЬНЫЕ СОВПАДЕНИЯ
     # --------------------------------------------------------
 
     strong_matches = sum(
@@ -272,32 +324,30 @@ def calculate_score(book, profile, main_problem):
     total += strong_matches * 40
 
     # --------------------------------------------------------
-    # 4. БОНУС ЗА ТОЧНОЕ ПОПАДАНИЕ
+    # 4. ТОЧНОЕ ПОПАДАНИЕ
     # --------------------------------------------------------
 
     if main_problem in matched:
 
-        # Чем сильнее главная проблема,
-        # тем выше точность рекомендации.
-        total += main_score * main_score * 10
+        total += (
+            main_score *
+            main_score *
+            10
+        )
 
     # --------------------------------------------------------
-    # 5. ШТРАФ ЗА СЛИШКОМ УНИВЕРСАЛЬНЫЕ КНИГИ
-    #
-    # В базе большинство книг имеют 5 тем.
-    # Поэтому книга не должна получать преимущество
-    # только за большое количество тегов.
+    # 5. ШТРАФ ЗА УНИВЕРСАЛЬНОСТЬ
     # --------------------------------------------------------
 
-    extra_themes = max(0, len(themes) - len(matched))
+    extra_themes = max(
+        0,
+        len(themes) - len(matched)
+    )
 
     total -= extra_themes * 10
 
     # --------------------------------------------------------
-    # 6. ДОПОЛНИТЕЛЬНЫЙ БАЛЛ ЗА ФОКУС
-    #
-    # Если книга закрывает большую часть именно
-    # выраженных проблем пользователя — это плюс.
+    # 6. ПОКРЫТИЕ ПРОФИЛЯ
     # --------------------------------------------------------
 
     profile_problems = [
@@ -308,20 +358,36 @@ def calculate_score(book, profile, main_problem):
 
     if profile_problems:
 
-        coverage = len(matched) / len(profile_problems)
+        coverage = (
+            len(matched) /
+            len(profile_problems)
+        )
 
-        total += int(coverage * 100)
+        total += int(
+            coverage * 100
+        )
 
     return total, matched
 
 
+# ============================================================
+# КОНСОЛЬНЫЙ ТЕСТ
+# ============================================================
+
 def ask_question(number, text):
+
     print()
     print("=" * 60)
-    print("ВОПРОС " + str(number) + " ИЗ 15")
+    print(
+        "ВОПРОС " +
+        str(number) +
+        " ИЗ 15"
+    )
     print("=" * 60)
+
     print()
     print(text)
+
     print()
     print("1 — Совсем не про меня")
     print("2 — Скорее не про меня")
@@ -331,16 +397,32 @@ def ask_question(number, text):
 
     while True:
 
-        answer = input("\nВаш ответ: ").strip()
+        answer = input(
+            "\nВаш ответ: "
+        ).strip()
 
-        if answer in ["1", "2", "3", "4", "5"]:
+        if answer in [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+        ]:
+
             return int(answer)
 
         print()
-        print("Введите число от 1 до 5.")
+        print(
+            "Введите число от 1 до 5."
+        )
 
+
+# ============================================================
+# ПРОФИЛЬ
+# ============================================================
 
 def print_profile(scores):
+
     sorted_profile = sorted(
         scores.items(),
         key=lambda x: x[1],
@@ -352,10 +434,14 @@ def print_profile(scores):
     print("                 ВАШ ПРОФИЛЬ")
     print("=" * 60)
 
-    for number, (problem, score) in enumerate(
+    for number, (
+        problem,
+        score
+    ) in enumerate(
         sorted_profile,
         1
     ):
+
         print(
             str(number) +
             ". " +
@@ -367,34 +453,57 @@ def print_profile(scores):
     return sorted_profile
 
 
-def recommendation_reason(main_problem, matched, profile):
+# ============================================================
+# ПРИЧИНА РЕКОМЕНДАЦИИ
+# ============================================================
+
+def recommendation_reason(
+    main_problem,
+    matched,
+    profile
+):
+
     if main_problem in matched:
 
         if len(matched) == 1:
+
             return (
-                "Книга напрямую соответствует вашей "
-                "главной зоне — " + main_problem + "."
+                "Книга напрямую соответствует "
+                "вашей главной зоне — " +
+                main_problem +
+                "."
             )
 
         secondary = [
-            p for p in matched
+            p
+            for p in matched
             if p != main_problem
         ]
 
         return (
-            "Книга напрямую работает с вашей главной "
-            "зоной — " + main_problem +
+            "Книга напрямую работает с "
+            "вашей главной зоной — " +
+            main_problem +
             ", и дополнительно закрывает: " +
-            ", ".join(secondary) + "."
+            ", ".join(secondary) +
+            "."
         )
 
     return (
-        "Книга соответствует нескольким выраженным "
-        "зонам вашего профиля."
+        "Книга соответствует нескольким "
+        "выраженным зонам вашего профиля."
     )
 
 
-def save_result(scores, main_problem, recommendations):
+# ============================================================
+# СОХРАНЕНИЕ
+# ============================================================
+
+def save_result(
+    scores,
+    main_problem,
+    recommendations
+):
 
     result = {
         "profile": scores,
@@ -407,23 +516,47 @@ def save_result(scores, main_problem, recommendations):
         book = item["book"]
 
         result["recommendations"].append({
-            "book_id": book.get("book_id"),
-            "title": book.get("title", ""),
-            "author": book.get("author", ""),
-            "category": book.get("category", ""),
-            "type": book.get(
-                "type",
-                book.get("book_type", "")
-            ),
-            "score": item["score"],
-            "matched": item["matched"],
-            "themes": sorted(
-                normalize_themes(book)
-            ),
-            "filepath": book.get(
-                "filepath",
-                book.get("filename", "")
-            )
+
+            "book_id":
+                book.get("book_id"),
+
+            "title":
+                book.get("title", ""),
+
+            "author":
+                book.get("author", ""),
+
+            "category":
+                book.get("category", ""),
+
+            "type":
+                book.get(
+                    "type",
+                    book.get(
+                        "book_type",
+                        ""
+                    )
+                ),
+
+            "score":
+                item["score"],
+
+            "matched":
+                item["matched"],
+
+            "themes":
+                sorted(
+                    normalize_themes(book)
+                ),
+
+            "filepath":
+                book.get(
+                    "filepath",
+                    book.get(
+                        "filename",
+                        ""
+                    )
+                )
         })
 
     try:
@@ -444,29 +577,48 @@ def save_result(scores, main_problem, recommendations):
     except Exception as e:
 
         print()
-        print("Ошибка сохранения результата:")
+        print(
+            "Ошибка сохранения результата:"
+        )
         print(e)
 
+
+# ============================================================
+# ОСНОВНАЯ ФУНКЦИЯ
+# ============================================================
 
 def main():
 
     print()
     print("=" * 60)
-    print("        ПСИХОЛОГИЧЕСКИЙ ТЕСТ — ВАША КНИГА")
+    print(
+        "        ПСИХОЛОГИЧЕСКИЙ ТЕСТ — ВАША КНИГА"
+    )
     print("=" * 60)
 
     books = load_books()
 
     if not books:
-        input("\nНажмите Enter для выхода...")
+
+        input(
+            "\nНажмите Enter для выхода..."
+        )
+
         return
 
     print()
-    print("Книг в базе:", len(books))
+    print(
+        "Книг в базе:",
+        len(books)
+    )
 
     print()
-    print("Ответьте на 15 вопросов.")
-    print("Используйте шкалу от 1 до 5.")
+    print(
+        "Ответьте на 15 вопросов."
+    )
+    print(
+        "Используйте шкалу от 1 до 5."
+    )
 
     scores = {
         problem: 0
@@ -477,7 +629,10 @@ def main():
     # ТЕСТ
     # ========================================================
 
-    for number, (question, problem) in enumerate(
+    for number, (
+        question,
+        problem
+    ) in enumerate(
         QUESTIONS,
         1
     ):
@@ -488,27 +643,41 @@ def main():
         )
 
         if problem == "общение":
-            scores[problem] += (6 - answer)
+
+            scores[problem] += (
+                6 - answer
+            )
+
         else:
+
             scores[problem] += answer
 
     # ========================================================
     # ПРОФИЛЬ
     # ========================================================
 
-    sorted_profile = print_profile(scores)
+    sorted_profile = print_profile(
+        scores
+    )
 
     main_problem = sorted_profile[0][0]
 
     print()
-    print("Главная зона:", main_problem)
+    print(
+        "Главная зона:",
+        main_problem
+    )
 
     # ========================================================
     # АНАЛИЗ
     # ========================================================
 
     print()
-    print("Анализируем", len(books), "книг...")
+    print(
+        "Анализируем",
+        len(books),
+        "книг..."
+    )
 
     recommendations = []
 
@@ -552,13 +721,18 @@ def main():
 
     print()
     print("=" * 60)
-    print("                  ВАША КНИГА")
+    print(
+        "                  ВАША КНИГА"
+    )
     print("=" * 60)
 
     if not recommendations:
 
         print()
-        print("Подходящая книга не найдена.")
+        print(
+            "Подходящая книга не найдена."
+        )
+
         print()
 
         save_result(
@@ -567,7 +741,10 @@ def main():
             []
         )
 
-        input("\nНажмите Enter для выхода...")
+        input(
+            "\nНажмите Enter для выхода..."
+        )
+
         return
 
     first = recommendations[0]
@@ -577,10 +754,12 @@ def main():
     score = first["score"]
 
     print()
-    print(book.get(
-        "title",
-        "Без названия"
-    ))
+    print(
+        book.get(
+            "title",
+            "Без названия"
+        )
+    )
 
     author = str(
         book.get(
@@ -590,7 +769,11 @@ def main():
     ).strip()
 
     if author:
-        print("Автор:", author)
+
+        print(
+            "Автор:",
+            author
+        )
 
     print(
         "Категория:",
@@ -609,6 +792,7 @@ def main():
     )
 
     if book_type:
+
         print(
             "Тип книги:",
             book_type
@@ -625,14 +809,19 @@ def main():
     )
 
     for problem in matched:
+
         print(
             "  •",
             problem
         )
 
     print()
-    print("Почему она выбрана:")
+    print(
+        "Почему она выбрана:"
+    )
+
     print()
+
     print(
         " ",
         recommendation_reason(
@@ -642,12 +831,17 @@ def main():
         )
     )
 
-    themes = normalize_themes(book)
+    themes = normalize_themes(
+        book
+    )
 
     if themes:
 
         print()
-        print("Темы книги:")
+        print(
+            "Темы книги:"
+        )
+
         print(
             " ",
             ", ".join(
@@ -664,7 +858,10 @@ def main():
     )
 
     print()
-    print("PDF-файл:")
+    print(
+        "PDF-файл:"
+    )
+
     print(filepath)
 
     # ========================================================
@@ -673,7 +870,9 @@ def main():
 
     print()
     print("=" * 60)
-    print("              ЕЩЁ 5 РЕКОМЕНДАЦИЙ")
+    print(
+        "              ЕЩЁ 5 РЕКОМЕНДАЦИЙ"
+    )
     print("=" * 60)
 
     for number, item in enumerate(
@@ -701,6 +900,7 @@ def main():
         ).strip()
 
         if author:
+
             print(
                 "   Автор:",
                 author
@@ -723,6 +923,7 @@ def main():
         )
 
         if rec_type:
+
             print(
                 "   Тип:",
                 rec_type
@@ -763,12 +964,19 @@ def main():
 
     print()
     print("=" * 60)
-    print("             ТЕСТ ЗАВЕРШЁН")
+    print(
+        "             ТЕСТ ЗАВЕРШЁН"
+    )
     print("=" * 60)
 
     print()
-    print("Результат сохранён:")
-    print(RESULT_FILE)
+    print(
+        "Результат сохранён:"
+    )
+
+    print(
+        RESULT_FILE
+    )
 
     input(
         "\nНажмите Enter для выхода..."
@@ -777,5 +985,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
+```
