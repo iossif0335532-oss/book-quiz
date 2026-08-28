@@ -8,7 +8,7 @@ TOKEN = os.environ["BOT_TOKEN"]
 
 API = f"https://api.telegram.org/bot{TOKEN}"
 
-app = Flask(**name**)
+app = Flask(name)
 
 PAID_USERS_FILE = "paid_users.json"
 DATABASE_FILE = "recommendation_database.json"
