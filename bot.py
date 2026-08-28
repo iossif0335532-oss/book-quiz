@@ -1,47 +1,55 @@
 import os
 import json
-import hmac
-import hashlib
-import urllib.parse
-from flask import Flask, request, jsonify
 import requests
 
-
-# ============================================================
-# НАСТРОЙКИ
-# ============================================================
+from flask import Flask, request, send_file
 
 TOKEN = os.environ["BOT_TOKEN"]
 
 API = f"https://api.telegram.org/bot{TOKEN}"
 
-WEB_APP_URL = "https://book-quiz.onrender.com"
-
-
 app = Flask(__name__)
 
-
-# ============================================================
-# ОПЛАТИВШИЕ ПОЛЬЗОВАТЕЛИ
-#
-# Пока храним в памяти.
-# Позже подключим постоянную базу.
-# ============================================================
-
-PAID_USERS = set()
+# Пользователи, которые оплатили тест
+PAID_USERS_FILE = "paid_users.json"
 
 
-# ============================================================
-# TELEGRAM API
-# ============================================================
-
-def tg(method, data=None):
-
+def load_paid_users():
     try:
+        if not os.path.exists(PAID_USERS_FILE):
+            return set()
 
+        with open(PAID_USERS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        return set(str(x) for x in data)
+
+    except Exception:
+        return set()
+
+
+def save_paid_users(users):
+    with open(
+        PAID_USERS_FILE,
+        "w",
+        encoding="utf-8"
+    ) as f:
+        json.dump(
+            list(users),
+            f,
+            ensure_ascii=False,
+            indent=2
+        )
+
+
+PAID_USERS = load_paid_users()
+
+
+def tg(method, data):
+    try:
         response = requests.post(
             f"{API}/{method}",
-            json=data or {},
+            json=data,
             timeout=20
         )
 
@@ -57,7 +65,7 @@ def tg(method, data=None):
     except Exception as e:
 
         print(
-            "Telegram API ERROR:",
+            "Telegram ERROR:",
             method,
             e
         )
@@ -65,122 +73,13 @@ def tg(method, data=None):
         return {}
 
 
-# ============================================================
-# ПРОВЕРКА TELEGRAM WEB APP INIT DATA
-# ============================================================
-
-def validate_init_data(init_data):
-
-    if not init_data:
-        return None
-
-    try:
-
-        parsed = urllib.parse.parse_qs(
-            init_data,
-            strict_parsing=True
-        )
-
-        received_hash_list = parsed.get("hash")
-
-        if not received_hash_list:
-            return None
-
-        received_hash = received_hash_list[0]
-
-        data_check_items = []
-
-        for key in sorted(parsed.keys()):
-
-            if key == "hash":
-                continue
-
-            value = parsed[key][0]
-
-            data_check_items.append(
-                f"{key}={value}"
-            )
-
-        data_check_string = "\n".join(
-            data_check_items
-        )
-
-        secret_key = hmac.new(
-            b"WebAppData",
-            TOKEN.encode(),
-            hashlib.sha256
-        ).digest()
-
-        calculated_hash = hmac.new(
-            secret_key,
-            data_check_string.encode(),
-            hashlib.sha256
-        ).hexdigest()
-
-        if not hmac.compare_digest(
-            calculated_hash,
-            received_hash
-        ):
-            print(
-                "WEB APP: неправильная подпись"
-            )
-
-            return None
-
-        user_data = parsed.get("user")
-
-        if not user_data:
-            return None
-
-        user = json.loads(
-            user_data[0]
-        )
-
-        return user
-
-    except Exception as e:
-
-        print(
-            "INIT DATA ERROR:",
-            e
-        )
-
-        return None
-
-
-# ============================================================
-# ГЛАВНАЯ СТРАНИЦА
-# ============================================================
-
 @app.route("/")
 def home():
 
-    try:
+    return send_file(
+        "index.html"
+    )
 
-        with open(
-            "index.html",
-            "r",
-            encoding="utf-8"
-        ) as f:
-
-            return f.read()
-
-    except Exception as e:
-
-        print(
-            "INDEX ERROR:",
-            e
-        )
-
-        return (
-            "Ошибка загрузки приложения",
-            500
-        )
-
-
-# ============================================================
-# HEALTH CHECK
-# ============================================================
 
 @app.route("/health")
 def health():
@@ -188,65 +87,25 @@ def health():
     return "OK"
 
 
-# ============================================================
-# ПРОВЕРКА ДОСТУПА К ТЕСТУ
-# ============================================================
-
-@app.route(
-    "/check-access",
-    methods=["POST"]
-)
+@app.route("/check-access")
 def check_access():
 
-    data = request.get_json(
-        silent=True
-    ) or {}
-
-    init_data = data.get(
-        "initData",
+    user_id = request.args.get(
+        "user_id",
         ""
     )
 
-    user = validate_init_data(
-        init_data
-    )
-
-    if not user:
-
-        return jsonify({
-            "ok": False,
-            "paid": False,
-            "error": "invalid_init_data"
-        }), 403
-
-    user_id = user.get("id")
-
     if not user_id:
+        return {
+            "paid": False
+        }
 
-        return jsonify({
-            "ok": False,
-            "paid": False,
-            "error": "user_not_found"
-        }), 403
+    paid = str(user_id) in PAID_USERS
 
-    paid = user_id in PAID_USERS
-
-    print(
-        "ACCESS CHECK:",
-        user_id,
-        "PAID:",
-        paid
-    )
-
-    return jsonify({
-        "ok": True,
+    return {
         "paid": paid
-    })
+    }
 
-
-# ============================================================
-# TELEGRAM WEBHOOK
-# ============================================================
 
 @app.route(
     "/webhook",
@@ -254,65 +113,19 @@ def check_access():
 )
 def webhook():
 
-    update = request.get_json(
-        silent=True
-    ) or {}
+    update = request.json or {}
 
-    print()
     print(
-        "========== TELEGRAM UPDATE =========="
-    )
-    print(
+        "UPDATE:",
         json.dumps(
             update,
             ensure_ascii=False
-        )[:3000]
+        )[:2000]
     )
 
-    # ========================================================
-    # PRE-CHECKOUT QUERY
-    #
-    # Telegram спрашивает:
-    # можно ли проводить оплату?
-    # ========================================================
-
-    pre_checkout = update.get(
-        "pre_checkout_query"
-    )
-
-    if pre_checkout:
-
-        query_id = pre_checkout.get(
-            "id"
-        )
-
-        payload = pre_checkout.get(
-            "invoice_payload",
-            ""
-        )
-
-        print(
-            "PRE-CHECKOUT:",
-            query_id,
-            payload
-        )
-
-        tg(
-            "answerPreCheckoutQuery",
-            {
-                "pre_checkout_query_id":
-                    query_id,
-
-                "ok": True
-            }
-        )
-
-        return "ok"
-
-
-    # ========================================================
-    # CALLBACK BUTTON
-    # ========================================================
+    # ==========================================================
+    # CALLBACK
+    # ==========================================================
 
     callback = update.get(
         "callback_query"
@@ -342,9 +155,9 @@ def webhook():
             "data"
         )
 
-        # ----------------------------------------------------
-        # ПОКУПКА ТЕСТА
-        # ----------------------------------------------------
+        # ------------------------------------------------------
+        # КНОПКА ПОКУПКИ
+        # ------------------------------------------------------
 
         if data == "buy_test":
 
@@ -359,8 +172,7 @@ def webhook():
             tg(
                 "sendInvoice",
                 {
-                    "chat_id":
-                        chat_id,
+                    "chat_id": chat_id,
 
                     "title":
                         "Book Quiz",
@@ -387,12 +199,13 @@ def webhook():
                 }
             )
 
+            return "ok"
+
         return "ok"
 
-
-    # ========================================================
+    # ==========================================================
     # MESSAGE
-    # ========================================================
+    # ==========================================================
 
     message = update.get(
         "message"
@@ -402,7 +215,6 @@ def webhook():
 
         return "ok"
 
-
     chat_id = message.get(
         "chat",
         {}
@@ -410,10 +222,36 @@ def webhook():
         "id"
     )
 
+    # ==========================================================
+    # PRE-CHECKOUT
+    # ==========================================================
 
-    # ========================================================
+    pre_checkout = update.get(
+        "pre_checkout_query"
+    )
+
+    if pre_checkout:
+
+        pre_checkout_id = pre_checkout.get(
+            "id"
+        )
+
+        tg(
+            "answerPreCheckoutQuery",
+            {
+                "pre_checkout_query_id":
+                    pre_checkout_id,
+
+                "ok":
+                    True
+            }
+        )
+
+        return "ok"
+
+    # ==========================================================
     # УСПЕШНАЯ ОПЛАТА
-    # ========================================================
+    # ==========================================================
 
     successful_payment = message.get(
         "successful_payment"
@@ -421,31 +259,22 @@ def webhook():
 
     if successful_payment:
 
-        telegram_user_id = chat_id
+        user_id = str(
+            chat_id
+        )
 
         PAID_USERS.add(
-            telegram_user_id
+            user_id
         )
 
-        print()
-        print(
-            "===================================="
-        )
-        print(
-            "ОПЛАТА ПОЛУЧЕНА"
-        )
-        print(
-            "USER:",
-            telegram_user_id
-        )
-        print(
-            "PAID USERS:",
+        save_paid_users(
             PAID_USERS
         )
+
         print(
-            "===================================="
+            "ОПЛАТА ПОЛУЧЕНА:",
+            user_id
         )
-        print()
 
         tg(
             "sendMessage",
@@ -456,8 +285,8 @@ def webhook():
                 "text":
                     (
                         "✅ Оплата прошла!\n\n"
-                        "Доступ к тесту открыт.\n\n"
-                        "Нажми кнопку ниже 👇"
+                        "Тест разблокирован.\n\n"
+                        "Теперь можешь пройти его 👇"
                     ),
 
                 "reply_markup":
@@ -472,7 +301,7 @@ def webhook():
                                         "web_app":
                                             {
                                                 "url":
-                                                    WEB_APP_URL
+                                                    "https://book-quiz.onrender.com"
                                             }
                                     }
                                 ]
@@ -483,20 +312,23 @@ def webhook():
 
         return "ok"
 
-
-    # ========================================================
-    # /START
-    # ========================================================
+    # ==========================================================
+    # START
+    # ==========================================================
 
     if message.get(
         "text"
     ) == "/start":
 
-        # ----------------------------------------------------
-        # Если пользователь уже оплатил
-        # ----------------------------------------------------
+        user_id = str(
+            chat_id
+        )
 
-        if chat_id in PAID_USERS:
+        # ------------------------------------------------------
+        # ЕСЛИ УЖЕ ОПЛАЧЕНО
+        # ------------------------------------------------------
+
+        if user_id in PAID_USERS:
 
             tg(
                 "sendMessage",
@@ -507,7 +339,7 @@ def webhook():
                     "text":
                         (
                             "📚 Book Quiz\n\n"
-                            "У тебя уже есть доступ к тесту."
+                            "Тест уже разблокирован."
                         ),
 
                     "reply_markup":
@@ -522,7 +354,7 @@ def webhook():
                                             "web_app":
                                                 {
                                                     "url":
-                                                        WEB_APP_URL
+                                                        "https://book-quiz.onrender.com"
                                                 }
                                         }
                                     ]
@@ -531,62 +363,56 @@ def webhook():
                 }
             )
 
-        else:
+            return "ok"
 
-            # ------------------------------------------------
-            # Новый пользователь
-            # ------------------------------------------------
+        # ------------------------------------------------------
+        # ЕСЛИ НЕ ОПЛАЧЕНО
+        # ------------------------------------------------------
 
-            tg(
-                "sendMessage",
-                {
-                    "chat_id":
-                        chat_id,
+        tg(
+            "sendMessage",
+            {
+                "chat_id":
+                    chat_id,
 
-                    "text":
-                        (
-                            "📚 Book Quiz\n\n"
-                            "Пройди тест и узнай, "
-                            "какая книга подходит именно тебе.\n\n"
-                            "12 вопросов → твой типаж → "
-                            "персональная рекомендация."
-                        ),
+                "text":
+                    (
+                        "📚 Book Quiz\n\n"
+                        "Пройди тест и узнай, "
+                        "какая книга подходит именно тебе.\n\n"
+                        "🔓 Стоимость прохождения — 200 ⭐"
+                    ),
 
-                    "reply_markup":
-                        {
-                            "inline_keyboard":
+                "reply_markup":
+                    {
+                        "inline_keyboard":
+                            [
                                 [
-                                    [
-                                        {
-                                            "text":
-                                                "🔓 Купить тест — 200 ⭐",
+                                    {
+                                        "text":
+                                            "🔓 Купить тест — 200 ⭐",
 
-                                            "callback_data":
-                                                "buy_test"
-                                        }
-                                    ]
+                                        "callback_data":
+                                            "buy_test"
+                                    }
                                 ]
-                        }
-                }
-            )
+                            ]
+                    }
+            }
+        )
 
     return "ok"
 
 
-# ============================================================
-# ЗАПУСК
-# ============================================================
-
 if __name__ == "__main__":
-
-    port = int(
-        os.environ.get(
-            "PORT",
-            10000
-        )
-    )
 
     app.run(
         host="0.0.0.0",
-        port=port
+
+        port=int(
+            os.environ.get(
+                "PORT",
+                10000
+            )
+        )
     )
