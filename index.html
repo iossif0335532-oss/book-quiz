@@ -1,20 +1,40 @@
 ```html
 <!doctype html>
 <html lang="ru">
+
 <head>
+
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+>
 
 <title>Какая книга тебя ждёт?</title>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+<link
+  rel="preconnect"
+  href="https://fonts.googleapis.com"
+>
+
+<link
+  rel="preconnect"
+  href="https://fonts.gstatic.com"
+  crossorigin
+>
+
+<link
+  href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Onest:wght@400;500;600&display=swap"
+  rel="stylesheet"
+>
 
 <style>
+
 :root {
+
   --night:#141033;
   --card:#1F1854;
   --card-2:#2A2170;
@@ -24,322 +44,644 @@
   --lav:#C7C0F5;
   --cream:#F6F2E8;
   --line:#3A3080;
+
   --disp:'Unbounded',system-ui,sans-serif;
   --body:'Onest',system-ui,-apple-system,sans-serif;
+
 }
 
 * {
+
   box-sizing:border-box;
   -webkit-tap-highlight-color:transparent;
+
 }
 
 html,
 body {
+
   margin:0;
   min-height:100%;
+
 }
 
 body {
+
   background:
-    radial-gradient(120% 90% at 15% 0%,#2A2170 0%,transparent 55%),
-    radial-gradient(100% 80% at 100% 100%,#3A1F5C 0%,transparent 50%),
+    radial-gradient(
+      120% 90% at 15% 0%,
+      #2A2170 0%,
+      transparent 55%
+    ),
+
+    radial-gradient(
+      100% 80% at 100% 100%,
+      #3A1F5C 0%,
+      transparent 50%
+    ),
+
     var(--night);
 
   color:var(--cream);
+
   font-family:var(--body);
+
   min-height:100vh;
+
   padding:20px 18px 40px;
+
   line-height:1.5;
+
   overflow-x:hidden;
+
 }
 
 .wrap {
+
   max-width:600px;
+
   margin:0 auto;
+
 }
 
 .hidden {
+
   display:none !important;
+
 }
 
 .kicker {
+
   font-family:var(--disp);
+
   font-weight:700;
+
   font-size:11px;
+
   letter-spacing:.28em;
+
   text-transform:uppercase;
+
   color:var(--gold);
+
   text-align:center;
+
 }
 
 h1 {
+
   font-family:var(--disp);
+
   font-weight:900;
+
   font-size:clamp(28px,7vw,42px);
+
   line-height:1.05;
+
   text-align:center;
+
   margin:12px 0 8px;
+
 }
 
 .sub {
+
   text-align:center;
+
   color:var(--lav);
+
   font-size:15px;
+
   max-width:36ch;
+
   margin:0 auto 28px;
+
 }
 
 .start {
+
   display:block;
+
   width:100%;
+
   max-width:340px;
+
   margin:0 auto;
+
   font-family:var(--disp);
+
   font-weight:700;
+
   font-size:16px;
+
   color:var(--night);
+
   background:var(--gold);
+
   border:0;
+
   border-radius:100px;
+
   padding:18px;
+
   cursor:pointer;
-  box-shadow:0 10px 0 -2px #B8901F,0 18px 34px rgba(0,0,0,.4);
+
+  box-shadow:
+    0 10px 0 -2px #B8901F,
+    0 18px 34px rgba(0,0,0,.4);
+
 }
 
 .start:active {
+
   transform:translateY(4px);
+
 }
 
 .fine {
+
   text-align:center;
+
   color:#7C74B8;
+
   font-size:12px;
+
   margin-top:18px;
+
+}
+
+.lock {
+
+  text-align:center;
+
+  padding-top:40px;
+
+}
+
+.lock-icon {
+
+  font-size:72px;
+
+  line-height:1;
+
+  margin-bottom:20px;
+
+}
+
+.lock h2 {
+
+  font-family:var(--disp);
+
+  font-size:24px;
+
+  line-height:1.2;
+
+  margin:0 0 14px;
+
+}
+
+.lock p {
+
+  color:var(--lav);
+
+  font-size:15px;
+
+  max-width:34ch;
+
+  margin:0 auto 24px;
+
+}
+
+.price {
+
+  color:var(--gold);
+
+  font-family:var(--disp);
+
+  font-weight:700;
+
 }
 
 .dots {
+
   display:flex;
+
   gap:6px;
+
   justify-content:center;
+
   margin-bottom:22px;
+
   flex-wrap:wrap;
+
 }
 
 .dots i {
+
   width:10px;
+
   height:10px;
+
   border-radius:50%;
+
   background:var(--line);
+
 }
 
 .dots i.on {
+
   background:var(--gold);
+
 }
 
 .dots i.now {
+
   background:var(--coral);
+
 }
 
 .qn {
+
   font-family:var(--disp);
+
   font-weight:700;
+
   font-size:11px;
+
   letter-spacing:.2em;
+
   color:var(--coral);
+
   text-transform:uppercase;
+
   text-align:center;
+
 }
 
 .q {
+
   font-family:var(--disp);
+
   font-weight:700;
+
   font-size:clamp(20px,5vw,28px);
+
   line-height:1.18;
+
   text-align:center;
+
   margin:10px 0 22px;
+
 }
 
 .opts {
+
   display:grid;
+
   gap:10px;
+
 }
 
 .opt {
+
   font-family:var(--body);
+
   font-weight:500;
+
   font-size:16px;
+
   text-align:left;
+
   color:var(--cream);
+
   background:var(--card);
+
   border:1.5px solid var(--line);
+
   border-radius:16px;
+
   padding:16px 18px;
+
   cursor:pointer;
+
   display:flex;
+
   gap:12px;
+
   align-items:center;
+
   width:100%;
+
 }
 
 .opt:active {
+
   border-color:var(--gold);
+
   background:var(--card-2);
+
 }
 
 .opt .em {
+
   font-size:22px;
+
   flex:none;
+
 }
 
 .loading {
+
   text-align:center;
+
   padding:50px 0;
+
 }
 
 .loading .badge {
+
   font-size:68px;
+
 }
 
 .loading p {
+
   font-family:var(--disp);
+
   font-weight:700;
+
   color:var(--lav);
+
 }
 
 .reveal {
+
   text-align:center;
+
 }
 
 .badge {
+
   font-size:68px;
+
   line-height:1;
+
   margin:10px 0;
+
 }
 
 .type-k {
+
   font-family:var(--disp);
+
   font-weight:700;
+
   font-size:12px;
+
   letter-spacing:.24em;
+
   text-transform:uppercase;
+
   color:var(--mint);
+
 }
 
 .type-n {
+
   font-family:var(--disp);
+
   font-weight:900;
+
   font-size:clamp(28px,7vw,40px);
+
   margin:6px 0;
+
 }
 
 .tag {
+
   color:var(--lav);
+
   font-size:17px;
+
   max-width:32ch;
+
   margin:0 auto 24px;
+
 }
 
 .card-book {
-  background:linear-gradient(160deg,var(--card-2),var(--card));
+
+  background:
+    linear-gradient(
+      160deg,
+      var(--card-2),
+      var(--card)
+    );
+
   border:1.5px solid var(--line);
+
   border-radius:22px;
+
   padding:22px 20px;
+
   text-align:left;
+
 }
 
 .lab {
+
   font-family:var(--disp);
+
   font-weight:700;
+
   font-size:11px;
+
   letter-spacing:.18em;
+
   text-transform:uppercase;
+
   color:var(--gold);
+
 }
 
 .main-book {
-  font-family:var(--disp);
-  font-weight:700;
-  font-size:24px;
-  line-height:1.15;
-  margin:8px 0 4px;
-}
 
-.match {
-  color:var(--mint);
+  font-family:var(--disp);
+
+  font-weight:700;
+
+  font-size:24px;
+
+  line-height:1.15;
+
+  margin:8px 0 4px;
+
 }
 
 .shelf {
+
   margin-top:20px;
+
   border-top:1px solid var(--line);
+
   padding-top:14px;
+
 }
 
 .shelf ul {
+
   list-style:none;
+
   margin:8px 0 0;
+
   padding:0;
+
   display:grid;
+
   gap:8px;
+
 }
 
 .shelf li {
+
   font-size:15px;
+
   padding-left:22px;
+
 }
 
 .cta {
+
   background:var(--card);
+
   border:1.5px dashed var(--gold);
+
   border-radius:16px;
+
   padding:16px;
+
   margin-top:18px;
+
   text-align:center;
+
   font-size:15px;
+
 }
 
 .cta b {
+
   color:var(--gold);
+
   font-family:var(--disp);
+
 }
 
 .row {
+
   display:flex;
+
   gap:10px;
+
   margin-top:20px;
+
   flex-wrap:wrap;
+
 }
 
 .row button {
+
   flex:1;
+
   min-width:140px;
+
   font-family:var(--disp);
+
   font-weight:700;
+
   font-size:13px;
+
   border-radius:100px;
+
   padding:14px;
+
   cursor:pointer;
+
   border:0;
+
 }
 
 .b-copy {
+
   background:var(--gold);
+
   color:var(--night);
+
 }
 
 .b-share {
+
   background:var(--mint);
+
   color:var(--night);
+
 }
+
 </style>
+
 </head>
+
 
 <body>
 
 <div class="wrap">
 
-<section id="intro">
 
-  <div class="kicker">Библиотерапевт · игра</div>
+<!-- ===================================================== -->
+<!-- ЭКРАН БЛОКИРОВКИ -->
+<!-- ===================================================== -->
+
+<section id="locked">
+
+  <div class="lock">
+
+    <div class="lock-icon">
+      🔒
+    </div>
+
+    <div class="kicker">
+      Book Quiz
+    </div>
+
+    <h2>
+      Тест пока заблокирован
+    </h2>
+
+    <p>
+      Чтобы пройти 12 вопросов и получить
+      персональную рекомендацию книги,
+      сначала нужно оплатить прохождение
+      в Telegram.
+    </p>
+
+    <p class="price">
+      Стоимость — 200 ⭐
+    </p>
+
+  </div>
+
+</section>
+
+
+<!-- ===================================================== -->
+<!-- ВХОД В ТЕСТ -->
+<!-- ===================================================== -->
+
+<section id="intro" class="hidden">
+
+  <div class="kicker">
+    Библиотерапевт · игра
+  </div>
 
   <h1>
     Какая книга<br>
@@ -352,35 +694,62 @@ h1 {
     которая как будто искала именно тебя.
   </p>
 
-  <button class="start" id="go" type="button">
+  <button
+    class="start"
+    id="go"
+    type="button"
+  >
     Погнали 🎲
   </button>
 
   <p class="fine">
-    Отвечай сердцем, а не головой. Так интереснее.
+    Отвечай сердцем, а не головой.
+    Так интереснее.
   </p>
 
 </section>
 
 
+<!-- ===================================================== -->
+<!-- ТЕСТ -->
+<!-- ===================================================== -->
+
 <section id="quiz" class="hidden">
 
-  <div class="dots" id="dots"></div>
+  <div
+    class="dots"
+    id="dots"
+  ></div>
 
-  <div class="qn" id="qn"></div>
+  <div
+    class="qn"
+    id="qn"
+  ></div>
 
-  <h2 class="q" id="q"></h2>
+  <h2
+    class="q"
+    id="q"
+  ></h2>
 
-  <div class="opts" id="opts"></div>
+  <div
+    class="opts"
+    id="opts"
+  ></div>
 
 </section>
 
+
+<!-- ===================================================== -->
+<!-- ЗАГРУЗКА -->
+<!-- ===================================================== -->
 
 <section id="load" class="hidden">
 
   <div class="loading">
 
-    <div class="badge">🎴</div>
+    <div class="badge">
+      🎴
+    </div>
 
     <p id="loadmsg">
       Тасуем колоду…
@@ -391,46 +760,263 @@ h1 {
 </section>
 
 
-<section id="res" class="hidden"></section>
+<!-- ===================================================== -->
+<!-- РЕЗУЛЬТАТ -->
+<!-- ===================================================== -->
+
+<section
+  id="res"
+  class="hidden"
+></section>
+
 
 </div>
 
 
 <script>
 
-const tg = window.Telegram?.WebApp;
+
+/* =========================================================
+   TELEGRAM
+========================================================= */
+
+const tg =
+  window.Telegram?.WebApp || null;
+
 
 if (tg) {
+
   tg.ready();
+
   tg.expand();
 
   try {
-    tg.setHeaderColor('#141033');
-    tg.setBackgroundColor('#141033');
+
+    tg.setHeaderColor(
+      '#141033'
+    );
+
+    tg.setBackgroundColor(
+      '#141033'
+    );
+
   } catch (e) {}
+
 }
 
 
+/* =========================================================
+   USER ID
+========================================================= */
+
+const userId =
+  tg?.initDataUnsafe?.user?.id
+  ? String(
+      tg.initDataUnsafe.user.id
+    )
+  : null;
+
+
+/* =========================================================
+   ВАЖНО:
+   БЕЗ TELEGRAM ПОЛЬЗОВАТЕЛЬ НЕ ДОПУСКАЕТСЯ
+========================================================= */
+
+if (!tg || !userId) {
+
+  showLocked(
+    'Открой тест через Telegram.'
+  );
+
+}
+
+
+/* =========================================================
+   HAPTIC
+========================================================= */
+
 function haptic(type) {
+
   try {
-    tg?.HapticFeedback?.impactOccurred(type || 'light');
+
+    tg?.HapticFeedback
+      ?.impactOccurred(
+        type || 'light'
+      );
+
   } catch (e) {}
+
 }
 
 
 function notify() {
+
   try {
-    tg?.HapticFeedback?.notificationOccurred('success');
+
+    tg?.HapticFeedback
+      ?.notificationOccurred(
+        'success'
+      );
+
   } catch (e) {}
+
 }
 
+
+/* =========================================================
+   ELEMENT
+========================================================= */
+
+function $(id) {
+
+  return document.getElementById(id);
+
+}
+
+
+/* =========================================================
+   LOCK SCREEN
+========================================================= */
+
+function showLocked(message) {
+
+  $('locked').classList.remove(
+    'hidden'
+  );
+
+  $('intro').classList.add(
+    'hidden'
+  );
+
+  $('quiz').classList.add(
+    'hidden'
+  );
+
+  $('load').classList.add(
+    'hidden'
+  );
+
+  $('res').classList.add(
+    'hidden'
+  );
+
+  if (message) {
+
+    const p =
+      $('locked').querySelector(
+        '.lock p'
+      );
+
+    if (p) {
+
+      p.textContent =
+        message;
+
+    }
+
+  }
+
+}
+
+
+/* =========================================================
+   ПРОВЕРКА ОПЛАТЫ
+========================================================= */
+
+async function checkAccess() {
+
+  if (!userId) {
+
+    showLocked(
+      'Открой тест через Telegram.'
+    );
+
+    return false;
+
+  }
+
+
+  try {
+
+    const response =
+      await fetch(
+        '/check-access?user_id=' +
+        encodeURIComponent(
+          userId
+        )
+      );
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        'Server error'
+      );
+
+    }
+
+
+    const data =
+      await response.json();
+
+
+    if (
+      data &&
+      data.paid === true
+    ) {
+
+      $('locked')
+        .classList
+        .add('hidden');
+
+      $('intro')
+        .classList
+        .remove('hidden');
+
+      return true;
+
+    }
+
+
+    showLocked(
+      'Чтобы пройти тест, сначала оплатите прохождение в Telegram.'
+    );
+
+    return false;
+
+
+  } catch (error) {
+
+    console.error(
+      error
+    );
+
+    showLocked(
+      'Не удалось проверить оплату. Откройте тест ещё раз через Telegram.'
+    );
+
+    return false;
+
+  }
+
+}
+
+
+/* =========================================================
+   ТИПЫ
+========================================================= */
 
 const TYPES = {
 
   LAUNCH: {
+
     emoji:'🚀',
+
     name:'Запускатор',
-    tag:'Ты не ждёшь идеального момента — ты его создаёшь.',
+
+    tag:
+      'Ты не ждёшь идеального момента — ты его создаёшь.',
+
     pool:[
       'Сделай. Твой первый шаг',
       'Бизнес с нуля',
@@ -439,12 +1025,19 @@ const TYPES = {
       'Ставь цели',
       'Учись бизнесу'
     ]
+
   },
 
+
   BUILD: {
+
     emoji:'🧱',
+
     name:'Архитектор',
-    tag:'Другие суетятся — ты выстраиваешь. Хаос тебя бесит.',
+
+    tag:
+      'Другие суетятся — ты выстраиваешь. Хаос тебя бесит.',
+
     pool:[
       'Метод тыквы',
       'Управление фирмой',
@@ -452,12 +1045,19 @@ const TYPES = {
       'Легко не будет',
       'Доставляя счастье'
     ]
+
   },
 
+
   CHARM: {
+
     emoji:'🎤',
+
     name:'Обаятель',
-    tag:'Ты продашь снег зимой — и все останутся довольны.',
+
+    tag:
+      'Ты продашь снег зимой — и все останутся довольны.',
+
     pool:[
       'Продавай',
       'Никогда не ешьте в одиночку',
@@ -465,12 +1065,19 @@ const TYPES = {
       'Законы влияния',
       'Экспресс-маркетинг'
     ]
+
   },
 
+
   MOGUL: {
+
     emoji:'👑',
+
     name:'Магнат',
-    tag:'Деньги для тебя не цель, а способ вести счёт.',
+
+    tag:
+      'Деньги для тебя не цель, а способ вести счёт.',
+
     pool:[
       'Богатей',
       'Монархия предпринимателя',
@@ -478,12 +1085,19 @@ const TYPES = {
       'Метод волка с Уолл-стрит',
       'Трансформатор 2'
     ]
+
   },
 
+
   WRITE: {
+
     emoji:'✍️',
+
     name:'Мастер слова',
-    tag:'Твоё оружие — текст. Один пост, и все в теме.',
+
+    tag:
+      'Твоё оружие — текст. Один пост, и все в теме.',
+
     pool:[
       'Клад для копирайтера',
       'Бизнес-копирайтинг',
@@ -491,35 +1105,56 @@ const TYPES = {
       'Автор, ножницы, бумага',
       'Создавай'
     ]
+
   },
 
+
   VISION: {
+
     emoji:'💡',
+
     name:'Визионер',
-    tag:'Ты видишь то, что остальные заметят лет через пять.',
+
+    tag:
+      'Ты видишь то, что остальные заметят лет через пять.',
+
     pool:[
       'Думай иначе. Креативное мышление',
       'Генерация прорывных идей',
       'Alibaba. История мирового восхождения'
     ]
+
   },
 
+
   BEAST: {
+
     emoji:'🔥',
+
     name:'Берсерк',
-    tag:'Меньше мыслей — больше дела. Сомнения не про тебя.',
+
+    tag:
+      'Меньше мыслей — больше дела. Сомнения не про тебя.',
+
     pool:[
       'Unfuck yourself',
       'Магический пофигизм',
       'Забей',
       'Разожги огонь'
     ]
+
   },
 
+
   BIO: {
+
     emoji:'🧠',
+
     name:'Биохакер',
-    tag:'Ты понял главное: топливо для успеха — это ты сам.',
+
+    tag:
+      'Ты понял главное: топливо для успеха — это ты сам.',
+
     pool:[
       'Биохакинг мозга',
       'Сила подсознания',
@@ -528,147 +1163,426 @@ const TYPES = {
       'Психология вредных привычек',
       'Переключайтесь'
     ]
+
   }
 
 };
 
 
+/* =========================================================
+   ВОПРОСЫ
+========================================================= */
+
 const Q = [
 
 [
- 'Пятница, 21:00. Где тебя найти?',
- [
-  ['Досиживаю встречу, которая вдруг стала важной','💼',{CHARM:1,MOGUL:1}],
-  ['Дома, набрасываю план на выходные','🗒️',{BUILD:2}],
-  ['В новом месте, куда вписался в последний момент','🎉',{LAUNCH:1,VISION:1}],
-  ['Уже сплю — завтра ранний подъём','😴',{BIO:2}]
- ]
+  'Пятница, 21:00. Где тебя найти?',
+
+  [
+    [
+      'Досиживаю встречу, которая вдруг стала важной',
+      '💼',
+      {CHARM:1,MOGUL:1}
+    ],
+
+    [
+      'Дома, набрасываю план на выходные',
+      '🗒️',
+      {BUILD:2}
+    ],
+
+    [
+      'В новом месте, куда вписался в последний момент',
+      '🎉',
+      {LAUNCH:1,VISION:1}
+    ],
+
+    [
+      'Уже сплю — завтра ранний подъём',
+      '😴',
+      {BIO:2}
+    ]
+  ]
+
 ],
 
-[
- 'Тебе дали 3 млн ₸. Потратить надо за сутки. Ты…',
- [
-  ['Вложу в идею, которая давно чешется','💥',{LAUNCH:2}],
-  ['Прокачаю себя: курсы, здоровье, книги','🧬',{BIO:1,BUILD:1}],
-  ['Устрою движ, о котором будут говорить','🕺',{CHARM:1,VISION:1}],
-  ['Прокручу так, чтобы стало десять','📈',{MOGUL:2}]
- ]
-],
 
 [
- 'Твоя суперсила в переписке?',
- [
-  ['Уболтаю кого угодно на что угодно','🗣️',{CHARM:2}],
-  ['Пишу так, что скринят и пересылают','⚡',{WRITE:2}],
-  ['Отвечаю через три дня и не парюсь','🧊',{BEAST:2}],
-  ['Задам вопрос, после которого все зависают','🤔',{VISION:2}]
- ]
+  'Тебе дали 3 млн ₸. Потратить надо за сутки. Ты…',
+
+  [
+    [
+      'Вложу в идею, которая давно чешется',
+      '💥',
+      {LAUNCH:2}
+    ],
+
+    [
+      'Прокачаю себя: курсы, здоровье, книги',
+      '🧬',
+      {BIO:1,BUILD:1}
+    ],
+
+    [
+      'Устрою движ, о котором будут говорить',
+      '🕺',
+      {CHARM:1,VISION:1}
+    ],
+
+    [
+      'Прокручу так, чтобы стало десять',
+      '📈',
+      {MOGUL:2}
+    ]
+  ]
+
 ],
 
-[
- 'Выбери себе питомца по духу:',
- [
-  ['Волк — один, но своё возьмёт','🐺',{MOGUL:1,BEAST:1}],
-  ['Пчела — на ней вся система держится','🐝',{BUILD:2}],
-  ['Ворон — хитрый и всё подмечает','🐦‍⬛',{VISION:1,CHARM:1}],
-  ['Кот — делает что хочет и в ус не дует','🐈',{BEAST:2}]
- ]
-],
 
 [
- 'Идеальное утро чемпиона:',
- [
-  ['Кофе — и сразу в бой, задачи ждут','☕',{LAUNCH:1,BUILD:1}],
-  ['Зарядка, вода, тишина — тело в приоритете','🧘',{BIO:2}],
-  ['Созвоны и движуха с людьми','📞',{CHARM:2}],
-  ['Блокнот и новые идеи под музыку','🎧',{VISION:1,WRITE:1}]
- ]
+  'Твоя суперсила в переписке?',
+
+  [
+    [
+      'Уболтаю кого угодно на что угодно',
+      '🗣️',
+      {CHARM:2}
+    ],
+
+    [
+      'Пишу так, что скринят и пересылают',
+      '⚡',
+      {WRITE:2}
+    ],
+
+    [
+      'Отвечаю через три дня и не парюсь',
+      '🧊',
+      {BEAST:2}
+    ],
+
+    [
+      'Задам вопрос, после которого все зависают',
+      '🤔',
+      {VISION:2}
+    ]
+  ]
+
 ],
 
-[
- 'Что бесит больше всего?',
- [
-  ['Хаос, где никто ни за что не отвечает','🌪️',{BUILD:2}],
-  ['Когда ноют вместо того, чтобы делать','🙄',{BEAST:2}],
-  ['Когда крутая идея достаётся не тому','😤',{VISION:1,MOGUL:1}],
-  ['Скука и предсказуемость','🥱',{LAUNCH:1,WRITE:1}]
- ]
-],
 
 [
- 'Твой девиз на футболке:',
- [
-  ['«Сделаю сам»','🛠️',{LAUNCH:2}],
-  ['«Дело важнее слов»','🎯',{BUILD:1,BEAST:1}],
-  ['«Люди решают всё»','🤝',{CHARM:2}],
-  ['«Думай иначе»','🌀',{VISION:2}]
- ]
+  'Выбери себе питомца по духу:',
+
+  [
+    [
+      'Волк — один, но своё возьмёт',
+      '🐺',
+      {MOGUL:1,BEAST:1}
+    ],
+
+    [
+      'Пчела — на ней вся система держится',
+      '🐝',
+      {BUILD:2}
+    ],
+
+    [
+      'Ворон — хитрый и всё подмечает',
+      '🐦‍⬛',
+      {VISION:1,CHARM:1}
+    ],
+
+    [
+      'Кот — делает что хочет и в ус не дует',
+      '🐈',
+      {BEAST:2}
+    ]
+  ]
+
 ],
 
-[
- 'Сцена из фильма про тебя:',
- [
-  ['Захожу в переговорную — все замолкают','🕴️',{MOGUL:2}],
-  ['Собираю команду с нуля в гараже','🔧',{LAUNCH:1,VISION:1}],
-  ['Толкаю речь — зал взрывается','🎙️',{CHARM:2}],
-  ['Тренируюсь под дождём, монтаж под бит','🥊',{BEAST:1,BIO:1}]
- ]
-],
 
 [
- 'Тебе дарят курс. Какой хватаешь?',
- [
-  ['«Продавать на любые деньги»','💸',{CHARM:1,MOGUL:1}],
-  ['«Тексты, что приносят клиентов»','📝',{WRITE:2}],
-  ['«Энергия и биохакинг 24/7»','🔋',{BIO:2}],
-  ['«Придумывать то, чего ещё нет»','🧪',{VISION:2}]
- ]
+  'Идеальное утро чемпиона:',
+
+  [
+    [
+      'Кофе — и сразу в бой, задачи ждут',
+      '☕',
+      {LAUNCH:1,BUILD:1}
+    ],
+
+    [
+      'Зарядка, вода, тишина — тело в приоритете',
+      '🧘',
+      {BIO:2}
+    ],
+
+    [
+      'Созвоны и движуха с людьми',
+      '📞',
+      {CHARM:2}
+    ],
+
+    [
+      'Блокнот и новые идеи под музыку',
+      '🎧',
+      {VISION:1,WRITE:1}
+    ]
+  ]
+
 ],
 
-[
- 'Как ты принимаешь решения?',
- [
-  ['Быстро, по чуйке — потом разберусь','⚡',{BEAST:1,LAUNCH:1}],
-  ['Считаю цифры и риски','🧮',{MOGUL:1,BUILD:1}],
-  ['Спрошу нужных людей','☎️',{CHARM:2}],
-  ['Жду инсайт — он всегда приходит','💫',{VISION:1,BIO:1}]
- ]
-],
 
 [
- 'Что для тебя успех?',
- [
-  ['Дело, которое работает без меня','⚙️',{BUILD:2}],
-  ['Свобода и деньги на свои правила','🗽',{MOGUL:2}],
-  ['Имя, которое знают и уважают','🌟',{CHARM:1,WRITE:1}],
-  ['Каждый день быть сильнее вчерашнего','📊',{BIO:1,LAUNCH:1}]
- ]
+  'Что бесит больше всего?',
+
+  [
+    [
+      'Хаос, где никто ни за что не отвечает',
+      '🌪️',
+      {BUILD:2}
+    ],
+
+    [
+      'Когда ноют вместо того, чтобы делать',
+      '🙄',
+      {BEAST:2}
+    ],
+
+    [
+      'Когда крутая идея достаётся не тому',
+      '😤',
+      {VISION:1,MOGUL:1}
+    ],
+
+    [
+      'Скука и предсказуемость',
+      '🥱',
+      {LAUNCH:1,WRITE:1}
+    ]
+  ]
+
 ],
 
+
 [
- 'И честно — что тормозит тебя сейчас?',
- [
-  ['Слишком много идей, не знаю за что схватиться','🎠',{VISION:1,LAUNCH:1}],
-  ['Начинаю и бросаю','🔁',{BEAST:1,BUILD:1}],
-  ['Не умею продавать себя','🫥',{CHARM:1,WRITE:1}],
-  ['Нет энергии на всё это','🔌',{BIO:2}]
- ]
+  'Твой девиз на футболке:',
+
+  [
+    [
+      '«Сделаю сам»',
+      '🛠️',
+      {LAUNCH:2}
+    ],
+
+    [
+      '«Дело важнее слов»',
+      '🎯',
+      {BUILD:1,BEAST:1}
+    ],
+
+    [
+      '«Люди решают всё»',
+      '🤝',
+      {CHARM:2}
+    ],
+
+    [
+      '«Думай иначе»',
+      '🌀',
+      {VISION:2}
+    ]
+  ]
+
+],
+
+
+[
+  'Сцена из фильма про тебя:',
+
+  [
+    [
+      'Захожу в переговорную — все замолкают',
+      '🕴️',
+      {MOGUL:2}
+    ],
+
+    [
+      'Собираю команду с нуля в гараже',
+      '🔧',
+      {LAUNCH:1,VISION:1}
+    ],
+
+    [
+      'Толкаю речь — зал взрывается',
+      '🎙️',
+      {CHARM:2}
+    ],
+
+    [
+      'Тренируюсь под дождём, монтаж под бит',
+      '🥊',
+      {BEAST:1,BIO:1}
+    ]
+  ]
+
+],
+
+
+[
+  'Тебе дарят курс. Какой хватаешь?',
+
+  [
+    [
+      '«Продавать на любые деньги»',
+      '💸',
+      {CHARM:1,MOGUL:1}
+    ],
+
+    [
+      '«Тексты, что приносят клиентов»',
+      '📝',
+      {WRITE:2}
+    ],
+
+    [
+      '«Энергия и биохакинг 24/7»',
+      '🔋',
+      {BIO:2}
+    ],
+
+    [
+      '«Придумывать то, чего ещё нет»',
+      '🧪',
+      {VISION:2}
+    ]
+  ]
+
+],
+
+
+[
+  'Как ты принимаешь решения?',
+
+  [
+    [
+      'Быстро, по чуйке — потом разберусь',
+      '⚡',
+      {BEAST:1,LAUNCH:1}
+    ],
+
+    [
+      'Считаю цифры и риски',
+      '🧮',
+      {MOGUL:1,BUILD:1}
+    ],
+
+    [
+      'Спрошу нужных людей',
+      '☎️',
+      {CHARM:2}
+    ],
+
+    [
+      'Жду инсайт — он всегда приходит',
+      '💫',
+      {VISION:1,BIO:1}
+    ]
+  ]
+
+],
+
+
+[
+  'Что для тебя успех?',
+
+  [
+    [
+      'Дело, которое работает без меня',
+      '⚙️',
+      {BUILD:2}
+    ],
+
+    [
+      'Свобода и деньги на свои правила',
+      '🗽',
+      {MOGUL:2}
+    ],
+
+    [
+      'Имя, которое знают и уважают',
+      '🌟',
+      {CHARM:1,WRITE:1}
+    ],
+
+    [
+      'Каждый день быть сильнее вчерашнего',
+      '📊',
+      {BIO:1,LAUNCH:1}
+    ]
+  ]
+
+],
+
+
+[
+  'И честно — что тормозит тебя сейчас?',
+
+  [
+    [
+      'Слишком много идей, не знаю за что схватиться',
+      '🎠',
+      {VISION:1,LAUNCH:1}
+    ],
+
+    [
+      'Начинаю и бросаю',
+      '🔁',
+      {BEAST:1,BUILD:1}
+    ],
+
+    [
+      'Не умею продавать себя',
+      '🫥',
+      {CHARM:1,WRITE:1}
+    ],
+
+    [
+      'Нет энергии на всё это',
+      '🔌',
+      {BIO:2}
+    ]
+  ]
+
 ]
 
 ];
 
 
+/* =========================================================
+   ЗАГРУЗКА
+========================================================= */
+
 const LOADS = [
- 'Тасуем колоду…',
- 'Читаем между строк…',
- 'Ищем твою книгу на полке…',
- 'Почти готово ✨'
+
+  'Тасуем колоду…',
+
+  'Читаем между строк…',
+
+  'Ищем твою книгу на полке…',
+
+  'Почти готово ✨'
+
 ];
 
 
 let step = 0;
 
+
 let score = {
+
   LAUNCH:0,
   BUILD:0,
   CHARM:0,
@@ -677,19 +1591,20 @@ let score = {
   VISION:0,
   BEAST:0,
   BIO:0
+
 };
 
 
-const $ = function(id) {
-  return document.getElementById(id);
-};
-
+/* =========================================================
+   RESET
+========================================================= */
 
 function resetQuiz() {
 
   step = 0;
 
   score = {
+
     LAUNCH:0,
     BUILD:0,
     CHARM:0,
@@ -698,24 +1613,39 @@ function resetQuiz() {
     VISION:0,
     BEAST:0,
     BIO:0
+
   };
 
 }
 
 
+/* =========================================================
+   START
+========================================================= */
+
 function startQuiz() {
 
   resetQuiz();
 
-  haptic('medium');
+  haptic(
+    'medium'
+  );
 
-  $('intro').classList.add('hidden');
+  $('intro')
+    .classList
+    .add('hidden');
 
-  $('res').classList.add('hidden');
+  $('res')
+    .classList
+    .add('hidden');
 
-  $('load').classList.add('hidden');
+  $('load')
+    .classList
+    .add('hidden');
 
-  $('quiz').classList.remove('hidden');
+  $('quiz')
+    .classList
+    .remove('hidden');
 
   render();
 
@@ -727,114 +1657,207 @@ function startQuiz() {
 }
 
 
+/* =========================================================
+   RENDER
+========================================================= */
+
 function render() {
 
-  const current = Q[step];
+  const current =
+    Q[step];
 
-  const text = current[0];
+  const text =
+    current[0];
 
-  const opts = current[1];
+  const opts =
+    current[1];
+
 
   $('qn').textContent =
-    'Вопрос ' + (step + 1) + ' / ' + Q.length;
-
-  $('q').textContent = text;
-
-  $('opts').innerHTML = '';
-
-  opts.forEach(function(item) {
-
-    const label = item[0];
-
-    const emoji = item[1];
-
-    const weights = item[2];
-
-    const button = document.createElement('button');
-
-    button.type = 'button';
-
-    button.className = 'opt';
-
-    button.innerHTML =
-      '<span class="em">' +
-      emoji +
-      '</span>' +
-      '<span></span>';
-
-    button.lastElementChild.textContent = label;
-
-    button.addEventListener('click', function() {
-
-      haptic('light');
-
-      Object.keys(weights).forEach(function(key) {
-        score[key] += weights[key];
-      });
-
-      step++;
-
-      if (step < Q.length) {
-        render();
-      } else {
-        finish();
-      }
-
-    });
-
-    $('opts').appendChild(button);
-
-  });
+    'Вопрос ' +
+    (step + 1) +
+    ' / ' +
+    Q.length;
 
 
-  Array.from($('dots').children).forEach(function(dot,index) {
+  $('q').textContent =
+    text;
 
-    dot.className =
-      index < step
-      ? 'on'
-      : index === step
-      ? 'now'
-      : '';
 
-  });
+  $('opts').innerHTML =
+    '';
+
+
+  opts.forEach(
+    function(item) {
+
+      const label =
+        item[0];
+
+      const emoji =
+        item[1];
+
+      const weights =
+        item[2];
+
+
+      const button =
+        document.createElement(
+          'button'
+        );
+
+
+      button.type =
+        'button';
+
+
+      button.className =
+        'opt';
+
+
+      button.innerHTML =
+        '<span class="em">' +
+        emoji +
+        '</span>' +
+        '<span></span>';
+
+
+      button.lastElementChild
+        .textContent =
+          label;
+
+
+      button.addEventListener(
+        'click',
+        function() {
+
+          haptic(
+            'light'
+          );
+
+
+          Object.keys(
+            weights
+          ).forEach(
+            function(key) {
+
+              score[key] +=
+                weights[key];
+
+            }
+          );
+
+
+          step++;
+
+
+          if (
+            step < Q.length
+          ) {
+
+            render();
+
+          } else {
+
+            finish();
+
+          }
+
+        }
+      );
+
+
+      $('opts')
+        .appendChild(
+          button
+        );
+
+    }
+  );
+
+
+  Array.from(
+    $('dots').children
+  ).forEach(
+    function(dot,index) {
+
+      dot.className =
+        index < step
+        ? 'on'
+        : index === step
+        ? 'now'
+        : '';
+
+    }
+  );
 
 }
 
+
+/* =========================================================
+   FINISH
+========================================================= */
 
 function finish() {
 
-  $('quiz').classList.add('hidden');
+  $('quiz')
+    .classList
+    .add('hidden');
 
-  $('load').classList.remove('hidden');
+  $('load')
+    .classList
+    .remove('hidden');
+
 
   let i = 0;
 
-  $('loadmsg').textContent = LOADS[0];
 
-  const timer = setInterval(function() {
+  $('loadmsg')
+    .textContent =
+      LOADS[0];
 
-    i++;
 
-    if (i < LOADS.length) {
+  const timer =
+    setInterval(
+      function() {
 
-      $('loadmsg').textContent = LOADS[i];
+        i++;
 
-    } else {
 
-      clearInterval(timer);
+        if (
+          i < LOADS.length
+        ) {
 
-      showResult();
+          $('loadmsg')
+            .textContent =
+              LOADS[i];
 
-    }
+        } else {
 
-  },500);
+          clearInterval(
+            timer
+          );
+
+          showResult();
+
+        }
+
+      },
+      500
+    );
 
 }
 
 
+/* =========================================================
+   SHUFFLE
+========================================================= */
+
 function shuffle(array) {
 
-  const result = array.slice();
+  const result =
+    array.slice();
+
 
   for (
     let i = result.length - 1;
@@ -843,65 +1866,114 @@ function shuffle(array) {
   ) {
 
     const j =
-      Math.floor(Math.random() * (i + 1));
+      Math.floor(
+        Math.random() *
+        (i + 1)
+      );
 
-    const temp = result[i];
 
-    result[i] = result[j];
+    const temp =
+      result[i];
 
-    result[j] = temp;
+
+    result[i] =
+      result[j];
+
+
+    result[j] =
+      temp;
 
   }
+
 
   return result;
 
 }
 
 
+/* =========================================================
+   RESULT
+========================================================= */
+
 function showResult() {
 
-  $('load').classList.add('hidden');
+  $('load')
+    .classList
+    .add('hidden');
 
-  $('res').classList.remove('hidden');
+  $('res')
+    .classList
+    .remove('hidden');
+
 
   const total =
-    Object.values(score).reduce(
-      function(sum,value) {
+    Object.values(
+      score
+    ).reduce(
+      function(
+        sum,
+        value
+      ) {
+
         return sum + value;
+
       },
       0
     );
 
+
   const rank =
-    Object.entries(score).sort(
+    Object.entries(
+      score
+    ).sort(
       function(a,b) {
+
         return b[1] - a[1];
+
       }
     );
 
-  const key = rank[0][0];
 
-  const type = TYPES[key];
+  const key =
+    rank[0][0];
+
+
+  const type =
+    TYPES[key];
+
 
   const match =
     Math.min(
       98,
-      80 + Math.round(
-        rank[0][1] / total * 60
+      80 +
+      Math.round(
+        rank[0][1] /
+        total *
+        60
       )
     );
 
-  const main = type.pool[0];
+
+  const main =
+    type.pool[0];
+
 
   const extras =
-    shuffle(type.pool.slice(1)).slice(0,2);
+    shuffle(
+      type.pool.slice(1)
+    ).slice(
+      0,
+      2
+    );
 
 
   $('res').innerHTML =
 
     '<div class="reveal">' +
 
-      '<div class="type-k">Твой типаж</div>' +
+      '<div class="type-k">' +
+        'Твой типаж' +
+      '</div>' +
 
       '<div class="badge">' +
         type.emoji +
@@ -916,6 +1988,7 @@ function showResult() {
       '</p>' +
 
     '</div>' +
+
 
     '<div class="card-book">' +
 
@@ -937,9 +2010,19 @@ function showResult() {
 
         '<ul>' +
 
-          extras.map(function(book) {
-            return '<li>📖 ' + book + '</li>';
-          }).join('') +
+          extras
+            .map(
+              function(book) {
+
+                return (
+                  '<li>📖 ' +
+                  book +
+                  '</li>'
+                );
+
+              }
+            )
+            .join('') +
 
         '</ul>' +
 
@@ -947,12 +2030,20 @@ function showResult() {
 
     '</div>' +
 
+
     '<div class="cta">' +
-      'Хочешь свою книгу? Напиши в директ кодовое слово<br>' +
+
+      'Хочешь свою книгу? ' +
+      'Напиши в директ кодовое слово<br>' +
+
       '<b>' +
-      type.name.toUpperCase() +
-      '</b> — и я пришлю её тебе 📩' +
+        type.name.toUpperCase() +
+      '</b>' +
+
+      ' — и я пришлю её тебе 📩' +
+
     '</div>' +
+
 
     '<div class="row">' +
 
@@ -967,57 +2058,103 @@ function showResult() {
     '</div>';
 
 
-  $('copy').addEventListener('click', function() {
+  $('copy')
+    .addEventListener(
+      'click',
+      function() {
 
-    const text =
-      type.emoji +
-      ' Мой типаж — ' +
-      type.name +
-      '\n\n📕 Моя книга: ' +
-      main +
-      '\n\nПройди тест «Какая книга тебя ждёт?»';
+        const text =
 
-    navigator.clipboard.writeText(text)
-      .then(function() {
+          type.emoji +
+          ' Мой типаж — ' +
+          type.name +
 
-        $('copy').textContent =
-          'Скопировано ✓';
+          '\n\n📕 Моя книга: ' +
+          main +
 
-        notify();
-
-      })
-      .catch(function() {});
-
-  });
+          '\n\nПройди тест «Какая книга тебя ждёт?»';
 
 
-  $('share').addEventListener('click', function() {
+        navigator.clipboard
+          .writeText(text)
+          .then(
+            function() {
 
-    const payload = {
-      action:'quiz_result',
-      user_id:tg?.initDataUnsafe?.user?.id,
-      username:tg?.initDataUnsafe?.user?.username,
-      archetype:type.name,
-      book:main,
-      match:match,
-      extras:extras,
-      date:new Date().toISOString()
-    };
+              $('copy')
+                .textContent =
+                  'Скопировано ✓';
 
-    try {
+              notify();
 
-      tg.sendData(
-        JSON.stringify(payload)
-      );
+            }
+          )
+          .catch(
+            function() {}
+          );
 
-      $('share').textContent =
-        'Отправлено ✓';
+      }
+    );
 
-      notify();
 
-    } catch (e) {}
+  $('share')
+    .addEventListener(
+      'click',
+      function() {
 
-  });
+        const payload = {
+
+          action:
+            'quiz_result',
+
+          user_id:
+            tg?.initDataUnsafe
+              ?.user
+              ?.id,
+
+          username:
+            tg?.initDataUnsafe
+              ?.user
+              ?.username,
+
+          archetype:
+            type.name,
+
+          book:
+            main,
+
+          match:
+            match,
+
+          extras:
+            extras,
+
+          date:
+            new Date()
+              .toISOString()
+
+        };
+
+
+        try {
+
+          tg.sendData(
+            JSON.stringify(
+              payload
+            )
+          );
+
+
+          $('share')
+            .textContent =
+              'Отправлено ✓';
+
+
+          notify();
+
+        } catch (e) {}
+
+      }
+    );
 
 
   window.scrollTo({
@@ -1028,26 +2165,42 @@ function showResult() {
 }
 
 
-/*
-  ВАЖНО:
-  Результат НЕ сохраняется в localStorage.
-  Поэтому пользователь может проходить тест
-  сколько угодно раз.
-*/
+/* =========================================================
+   DOTS
+========================================================= */
 
 $('dots').innerHTML =
-  Q.map(function() {
-    return '<i></i>';
-  }).join('');
+
+  Q.map(
+    function() {
+
+      return '<i></i>';
+
+    }
+  ).join('');
 
 
-$('go').addEventListener(
-  'click',
-  startQuiz
-);
+/* =========================================================
+   START BUTTON
+========================================================= */
+
+$('go')
+  .addEventListener(
+    'click',
+    startQuiz
+  );
+
+
+/* =========================================================
+   ПРОВЕРКА ДОСТУПА
+========================================================= */
+
+checkAccess();
+
 
 </script>
 
 </body>
+
 </html>
 ```
