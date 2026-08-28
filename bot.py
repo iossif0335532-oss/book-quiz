@@ -1,8 +1,6 @@
 import os
 import json
 import sqlite3
-import threading
-import time
 import logging
 
 from flask import Flask, jsonify, request
@@ -41,6 +39,14 @@ DB_PATH = os.getenv("DB_PATH", "quiz.db")
 
 PRICE_STARS = 200
 
+# Render автоматически предоставляет адрес сервиса.
+RENDER_EXTERNAL_URL = os.getenv(
+    "RENDER_EXTERNAL_URL",
+    "https://book-quiz.onrender.com"
+).strip().rstrip("/")
+
+WEBHOOK_URL = f"{RENDER_EXTERNAL_URL}/telegram-webhook"
+
 
 # =========================================================
 # VALIDATION
@@ -51,18 +57,15 @@ if not BOT_TOKEN:
         "BOT_TOKEN is not set in Render Environment Variables"
     )
 
-
 if not WEB_APP_URL:
     raise RuntimeError(
         "WEB_APP_URL is not set in Render Environment Variables"
     )
 
-
 if not WEB_APP_URL.startswith("https://"):
     raise RuntimeError(
         "WEB_APP_URL must start with https://"
     )
-
 
 if " " in WEB_APP_URL:
     raise RuntimeError(
@@ -118,6 +121,8 @@ def init_db():
 
     conn.commit()
     conn.close()
+
+    log.info("Database initialized")
 
 
 # =========================================================
@@ -196,8 +201,6 @@ def set_paid(user_id, paid=True):
 
 def is_paid(user_id):
 
-    # Тестовый режим.
-    # При TEST_MODE=true любой Telegram user получает доступ.
     if TEST_MODE:
         return True
 
@@ -225,7 +228,6 @@ def is_paid(user_id):
 # =========================================================
 
 def save_result(user_id, result):
-
     conn = db()
 
     conn.execute(
@@ -260,7 +262,6 @@ def save_result(user_id, result):
 # =========================================================
 
 def tg(method, payload=None):
-
     url = f"{API}/{method}"
 
     response = requests.post(
@@ -282,11 +283,61 @@ def tg(method, payload=None):
 
 
 # =========================================================
+# TELEGRAM WEBHOOK SETUP
+# =========================================================
+
+def setup_webhook():
+    try:
+        log.info(
+            "Setting Telegram webhook: %s",
+            WEBHOOK_URL
+        )
+
+        # Сначала удаляем старый webhook.
+        tg(
+            "deleteWebhook",
+            {
+                "drop_pending_updates": False
+            }
+        )
+
+        # Затем устанавливаем новый.
+        result = tg(
+            "setWebhook",
+            {
+                "url": WEBHOOK_URL,
+                "drop_pending_updates": False
+            }
+        )
+
+        log.info(
+            "Telegram webhook configured: %s",
+            result
+        )
+
+        info = tg("getWebhookInfo")
+
+        webhook_info = info.get(
+            "result",
+            {}
+        )
+
+        log.info(
+            "Telegram webhook info: %s",
+            webhook_info
+        )
+
+    except Exception:
+        log.exception(
+            "Could not configure Telegram webhook"
+        )
+
+
+# =========================================================
 # MAIN KEYBOARD
 # =========================================================
 
 def start_keyboard():
-
     return {
         "inline_keyboard": [
             [
@@ -308,7 +359,7 @@ def start_keyboard():
 
 
 # =========================================================
-# /START MESSAGE
+# START MESSAGE
 # =========================================================
 
 def send_start(chat_id):
@@ -320,15 +371,12 @@ def send_start(chat_id):
     )
 
     if TEST_MODE:
-
         text += (
             "🧪 <b>ТЕСТОВЫЙ РЕЖИМ</b>\n"
-            "Оплата отключена.\n"
+            "Оплата отключена для тестирования.\n"
             "Доступ к тесту открыт.\n\n"
         )
-
     else:
-
         text += (
             f"Стоимость прохождения — "
             f"<b>{PRICE_STARS} ⭐</b>.\n\n"
@@ -353,7 +401,6 @@ def send_start(chat_id):
 
 def send_invoice(chat_id):
 
-    # В тестовом режиме настоящая оплата не нужна.
     if TEST_MODE:
 
         set_paid(
@@ -377,32 +424,25 @@ def send_invoice(chat_id):
 
         return
 
-
     payload = f"quiz_access:{chat_id}"
 
     tg(
         "sendInvoice",
         {
             "chat_id": chat_id,
-
             "title": "Прохождение теста",
-
             "description": (
                 "12 вопросов и "
                 "персональная рекомендация книги."
             ),
-
             "payload": payload,
-
             "currency": "XTR",
-
             "prices": [
                 {
                     "label": "Прохождение теста",
                     "amount": PRICE_STARS
                 }
             ],
-
             "reply_markup": {
                 "inline_keyboard": [
                     [
@@ -428,9 +468,7 @@ def answer_callback(
     callback_id,
     text=""
 ):
-
     try:
-
         tg(
             "answerCallbackQuery",
             {
@@ -440,10 +478,229 @@ def answer_callback(
         )
 
     except Exception:
-
         log.exception(
             "answerCallbackQuery failed"
         )
+
+
+# =========================================================
+# HANDLE MESSAGE
+# =========================================================
+
+def handle_message(message):
+
+    user = message.get(
+        "from"
+    )
+
+    if user:
+        save_user(user)
+
+    chat_id = message.get(
+        "chat",
+        {}
+    ).get(
+        "id"
+    )
+
+    if not chat_id:
+        return
+
+
+    # -----------------------------------------------------
+    # SUCCESSFUL PAYMENT
+    # -----------------------------------------------------
+
+    successful_payment = message.get(
+        "successful_payment"
+    )
+
+    if successful_payment:
+
+        if user:
+            set_paid(
+                user["id"],
+                True
+            )
+
+        tg(
+            "sendMessage",
+            {
+                "chat_id": chat_id,
+                "text": (
+                    "✅ <b>Оплата прошла!</b>\n\n"
+                    "Доступ к тесту открыт.\n\n"
+                    "Нажми «🎲 Пройти тест»."
+                ),
+                "parse_mode": "HTML",
+                "reply_markup": start_keyboard()
+            }
+        )
+
+        log.info(
+            "Payment received: user=%s payload=%s",
+            user.get("id") if user else None,
+            successful_payment.get(
+                "invoice_payload"
+            )
+        )
+
+        return
+
+
+    # -----------------------------------------------------
+    # WEB APP RESULT
+    # -----------------------------------------------------
+
+    web_app_data = message.get(
+        "web_app_data"
+    )
+
+    if web_app_data:
+
+        if not user:
+            return
+
+        user_id = user["id"]
+
+        # В боевом режиме результат принимаем
+        # только от пользователя с доступом.
+        if not is_paid(user_id):
+            tg(
+                "sendMessage",
+                {
+                    "chat_id": chat_id,
+                    "text": (
+                        "🔒 <b>Доступ закрыт.</b>\n\n"
+                        "Сначала необходимо оплатить "
+                        "прохождение теста."
+                    ),
+                    "parse_mode": "HTML"
+                }
+            )
+            return
+
+        raw_data = web_app_data.get(
+            "data",
+            "{}"
+        )
+
+        try:
+            result = json.loads(
+                raw_data
+            )
+
+        except json.JSONDecodeError:
+            result = {
+                "raw": raw_data
+            }
+
+        save_result(
+            user_id,
+            result
+        )
+
+        archetype = result.get(
+            "archetype",
+            "не определён"
+        )
+
+        book = result.get(
+            "book",
+            "не определена"
+        )
+
+        tg(
+            "sendMessage",
+            {
+                "chat_id": chat_id,
+                "text": (
+                    "🎉 <b>Результат получен!</b>\n\n"
+                    f"Твой типаж: "
+                    f"<b>{archetype}</b>\n\n"
+                    f"📕 Книга: "
+                    f"<b>{book}</b>"
+                ),
+                "parse_mode": "HTML"
+            }
+        )
+
+        log.info(
+            "Quiz result received: user=%s",
+            user_id
+        )
+
+        return
+
+
+    # -----------------------------------------------------
+    # TEXT COMMANDS
+    # -----------------------------------------------------
+
+    text = message.get(
+        "text",
+        ""
+    ).strip()
+
+    if text.startswith("/start"):
+
+        send_start(
+            chat_id
+        )
+
+        return
+
+
+    if text.startswith("/help"):
+
+        send_start(
+            chat_id
+        )
+
+        return
+
+
+    # -----------------------------------------------------
+    # TEST COMMAND
+    # -----------------------------------------------------
+
+    if text == "/test":
+
+        if not TEST_MODE:
+
+            tg(
+                "sendMessage",
+                {
+                    "chat_id": chat_id,
+                    "text": (
+                        "❌ Тестовый режим отключён."
+                    )
+                }
+            )
+
+            return
+
+        if user:
+
+            set_paid(
+                user["id"],
+                True
+            )
+
+        tg(
+            "sendMessage",
+            {
+                "chat_id": chat_id,
+                "text": (
+                    "🧪 <b>Тестовый доступ включён.</b>\n\n"
+                    "Нажми «🎲 Пройти тест»."
+                ),
+                "parse_mode": "HTML",
+                "reply_markup": start_keyboard()
+            }
+        )
+
+        return
 
 
 # =========================================================
@@ -478,7 +735,6 @@ def handle_update(update):
                     {
                         "pre_checkout_query_id":
                             pre_checkout["id"],
-
                         "ok": True
                     }
                 )
@@ -490,9 +746,7 @@ def handle_update(update):
                     {
                         "pre_checkout_query_id":
                             pre_checkout["id"],
-
                         "ok": False,
-
                         "error_message":
                             "Неизвестный платёж."
                     }
@@ -510,204 +764,10 @@ def handle_update(update):
         )
 
         if message:
-
-            user = message.get(
-                "from"
+            handle_message(
+                message
             )
-
-            if user:
-
-                save_user(user)
-
-
-            chat_id = message.get(
-                "chat",
-                {}
-            ).get(
-                "id"
-            )
-
-
-            # -------------------------------------------------
-            # SUCCESSFUL PAYMENT
-            # -------------------------------------------------
-
-            successful_payment = message.get(
-                "successful_payment"
-            )
-
-            if successful_payment:
-
-                if user:
-
-                    set_paid(
-                        user["id"],
-                        True
-                    )
-
-
-                tg(
-                    "sendMessage",
-                    {
-                        "chat_id": chat_id,
-
-                        "text": (
-                            "✅ <b>Оплата прошла!</b>\n\n"
-                            "Доступ к тесту открыт.\n\n"
-                            "Нажми «🎲 Пройти тест»."
-                        ),
-
-                        "parse_mode": "HTML",
-
-                        "reply_markup":
-                            start_keyboard()
-                    }
-                )
-
-
-                log.info(
-                    "Payment received: "
-                    "user=%s payload=%s",
-
-                    user.get("id")
-                    if user else None,
-
-                    successful_payment.get(
-                        "invoice_payload"
-                    )
-                )
-
-                return
-
-
-            # -------------------------------------------------
-            # WEB APP RESULT
-            # -------------------------------------------------
-
-            web_app_data = message.get(
-                "web_app_data"
-            )
-
-            if web_app_data:
-
-                raw_data = web_app_data.get(
-                    "data",
-                    "{}"
-                )
-
-                try:
-
-                    result = json.loads(
-                        raw_data
-                    )
-
-                except json.JSONDecodeError:
-
-                    result = {
-                        "raw": raw_data
-                    }
-
-
-                if user:
-
-                    save_result(
-                        user["id"],
-                        result
-                    )
-
-
-                archetype = result.get(
-                    "archetype",
-                    "не определён"
-                )
-
-                book = result.get(
-                    "book",
-                    "не определена"
-                )
-
-
-                tg(
-                    "sendMessage",
-                    {
-                        "chat_id": chat_id,
-
-                        "text": (
-                            "🎉 <b>Результат получен!</b>\n\n"
-                            f"Твой типаж: "
-                            f"<b>{archetype}</b>\n\n"
-                            f"📕 Книга: "
-                            f"<b>{book}</b>"
-                        ),
-
-                        "parse_mode": "HTML"
-                    }
-                )
-
-                return
-
-
-            # -------------------------------------------------
-            # TEXT COMMANDS
-            # -------------------------------------------------
-
-            text = message.get(
-                "text",
-                ""
-            ).strip()
-
-
-            if text.startswith(
-                "/start"
-            ):
-
-                send_start(
-                    chat_id
-                )
-
-                return
-
-
-            if text.startswith(
-                "/help"
-            ):
-
-                send_start(
-                    chat_id
-                )
-
-                return
-
-
-            # -------------------------------------------------
-            # TEST COMMAND
-            # -------------------------------------------------
-
-            if text == "/test":
-
-                set_paid(
-                    user["id"],
-                    True
-                )
-
-                tg(
-                    "sendMessage",
-                    {
-                        "chat_id": chat_id,
-
-                        "text": (
-                            "🧪 <b>Тестовый доступ включён.</b>\n\n"
-                            "Нажми «🎲 Пройти тест»."
-                        ),
-
-                        "parse_mode": "HTML",
-
-                        "reply_markup":
-                            start_keyboard()
-                    }
-                )
-
-                return
+            return
 
 
         # -------------------------------------------------
@@ -725,15 +785,12 @@ def handle_update(update):
             )
 
             if user:
-
                 save_user(user)
-
 
             data = callback.get(
                 "data",
                 ""
             )
-
 
             if data == "pay_quiz":
 
@@ -741,127 +798,70 @@ def handle_update(update):
                     callback["id"]
                 )
 
-
                 callback_message = callback.get(
                     "message",
                     {}
                 )
-
 
                 chat = callback_message.get(
                     "chat",
                     {}
                 )
 
-
                 chat_id = chat.get(
                     "id"
                 )
 
-
                 if chat_id:
-
                     send_invoice(
                         chat_id
                     )
 
                 return
 
-
     except Exception:
-
         log.exception(
-            "Error while handling update"
+            "Error while handling Telegram update"
         )
 
 
 # =========================================================
-# LONG POLLING
+# TELEGRAM WEBHOOK
 # =========================================================
 
-def poll():
+@app.post("/telegram-webhook")
+def telegram_webhook():
 
-    offset = 0
+    update = request.get_json(
+        silent=True
+    )
 
-
-    try:
-
-        tg(
-            "deleteWebhook",
+    if not update:
+        return jsonify(
             {
-                "drop_pending_updates": False
+                "ok": False,
+                "error": "empty_update"
             }
-        )
-
-    except Exception:
-
-        log.exception(
-            "Could not delete webhook"
-        )
-
+        ), 400
 
     log.info(
-        "Telegram bot polling started"
+        "Telegram update received: %s",
+        update.get("update_id")
+    )
+
+    handle_update(
+        update
+    )
+
+    return jsonify(
+        {
+            "ok": True
+        }
     )
 
 
-    while True:
-
-        try:
-
-            result = tg(
-                "getUpdates",
-                {
-                    "offset": offset,
-
-                    "timeout": 50,
-
-                    "allowed_updates": [
-                        "message",
-                        "callback_query",
-                        "pre_checkout_query"
-                    ]
-                }
-            )
-
-
-            updates = result.get(
-                "result",
-                []
-            )
-
-
-            for update in updates:
-
-                offset = (
-                    update["update_id"] + 1
-                )
-
-                handle_update(
-                    update
-                )
-
-
-        except requests.RequestException:
-
-            log.exception(
-                "Telegram connection error"
-            )
-
-            time.sleep(3)
-
-
-        except Exception:
-
-            log.exception(
-                "Polling error"
-            )
-
-            time.sleep(3)
-
-
 # =========================================================
-# FLASK HOME
+# HOME
 # =========================================================
 
 @app.get("/")
@@ -871,7 +871,8 @@ def home():
         {
             "ok": True,
             "service": "book-quiz-bot",
-            "test_mode": TEST_MODE
+            "test_mode": TEST_MODE,
+            "webhook": True
         }
     )
 
@@ -902,7 +903,6 @@ def check_access():
         ""
     ).strip()
 
-
     if not user_id:
 
         return jsonify(
@@ -912,16 +912,45 @@ def check_access():
             }
         ), 400
 
-
     return jsonify(
         {
             "paid": is_paid(
                 user_id
             ),
-
             "test_mode": TEST_MODE
         }
     )
+
+
+# =========================================================
+# WEBHOOK INFO
+# =========================================================
+
+@app.get("/webhook-info")
+def webhook_info():
+
+    try:
+
+        result = tg(
+            "getWebhookInfo"
+        )
+
+        return jsonify(
+            result
+        )
+
+    except Exception as exc:
+
+        log.exception(
+            "Webhook info error"
+        )
+
+        return jsonify(
+            {
+                "ok": False,
+                "error": str(exc)
+            }
+        ), 500
 
 
 # =========================================================
@@ -932,21 +961,27 @@ if __name__ == "__main__":
 
     init_db()
 
-
-    polling_thread = threading.Thread(
-        target=poll,
-        daemon=True
-    )
-
-    polling_thread.start()
-
+    setup_webhook()
 
     log.info(
-        "Starting Flask server "
-        "on port %s",
+        "Starting Flask server on port %s",
         PORT
     )
 
+    log.info(
+        "TEST_MODE=%s",
+        TEST_MODE
+    )
+
+    log.info(
+        "WEB_APP_URL=%s",
+        WEB_APP_URL
+    )
+
+    log.info(
+        "WEBHOOK_URL=%s",
+        WEBHOOK_URL
+    )
 
     app.run(
         host="0.0.0.0",
