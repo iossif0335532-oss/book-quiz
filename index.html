@@ -1,5 +1,5 @@
-```html
 <!doctype html>
+
 <html lang="ru">
 
 <head>
@@ -7,8 +7,9 @@
 <meta charset="utf-8">
 
 <meta
-  name="viewport"
-  content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+name="viewport"
+content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+
 >
 
 <title>Какая книга тебя ждёт?</title>
@@ -631,51 +632,42 @@ h1 {
 
 </head>
 
-
 <body>
 
 <div class="wrap">
-
-
-<!-- ===================================================== -->
-<!-- ЭКРАН БЛОКИРОВКИ -->
-<!-- ===================================================== -->
 
 <section id="locked">
 
   <div class="lock">
 
-    <div class="lock-icon">
-      🔒
-    </div>
+```
+<div class="lock-icon">
+  🔒
+</div>
 
-    <div class="kicker">
-      Book Quiz
-    </div>
+<div class="kicker">
+  Book Quiz
+</div>
 
-    <h2>
-      Тест пока заблокирован
-    </h2>
+<h2>
+  Тест пока заблокирован
+</h2>
 
-    <p>
-      Чтобы пройти 12 вопросов и получить
-      персональную рекомендацию книги,
-      сначала нужно оплатить прохождение
-      в Telegram.
-    </p>
+<p>
+  Чтобы пройти 12 вопросов и получить
+  персональную рекомендацию книги,
+  сначала нужно оплатить прохождение
+  в Telegram.
+</p>
 
-    <p class="price">
-      Стоимость — 200 ⭐
-    </p>
+<p class="price">
+  Стоимость — 200 ⭐
+</p>
+```
 
   </div>
 
 </section>
-
-
-<!-- ===================================================== -->
-<!-- ВХОД В ТЕСТ -->
-<!-- ===================================================== -->
 
 <section id="intro" class="hidden">
 
@@ -694,12 +686,17 @@ h1 {
     которая как будто искала именно тебя.
   </p>
 
-  <button
-    class="start"
-    id="go"
-    type="button"
-  >
-    Погнали 🎲
+<button
+class="start"
+id="go"
+type="button"
+
+>
+
+```
+Погнали 🎲
+```
+
   </button>
 
   <p class="fine">
@@ -708,11 +705,6 @@ h1 {
   </p>
 
 </section>
-
-
-<!-- ===================================================== -->
-<!-- ТЕСТ -->
-<!-- ===================================================== -->
 
 <section id="quiz" class="hidden">
 
@@ -738,43 +730,32 @@ h1 {
 
 </section>
 
-
-<!-- ===================================================== -->
-<!-- ЗАГРУЗКА -->
-<!-- ===================================================== -->
-
 <section id="load" class="hidden">
 
   <div class="loading">
 
-    <div class="badge">
-      🎴
-    </div>
+```
+<div class="badge">
+  🎴
+</div>
 
-    <p id="loadmsg">
-      Тасуем колоду…
-    </p>
+<p id="loadmsg">
+  Тасуем колоду…
+</p>
+```
 
   </div>
 
 </section>
-
-
-<!-- ===================================================== -->
-<!-- РЕЗУЛЬТАТ -->
-<!-- ===================================================== -->
 
 <section
   id="res"
   class="hidden"
 ></section>
 
-
 </div>
 
-
 <script>
-
 
 /* =========================================================
    TELEGRAM
@@ -782,7 +763,6 @@ h1 {
 
 const tg =
   window.Telegram?.WebApp || null;
-
 
 if (tg) {
 
@@ -818,17 +798,24 @@ const userId =
 
 
 /* =========================================================
-   ВАЖНО:
-   БЕЗ TELEGRAM ПОЛЬЗОВАТЕЛЬ НЕ ДОПУСКАЕТСЯ
+   НАСТРОЙКА ТЕСТОВОГО РЕЖИМА
 ========================================================= */
 
-if (!tg || !userId) {
-
-  showLocked(
-    'Открой тест через Telegram.'
+const urlParams =
+  new URLSearchParams(
+    window.location.search
   );
 
-}
+const TEST_MODE =
+  urlParams.get('test') === '1';
+
+
+/* =========================================================
+   API RENDER
+========================================================= */
+
+const API_BASE =
+  'https://book-quiz.onrender.com';
 
 
 /* =========================================================
@@ -920,12 +907,29 @@ function showLocked(message) {
 
 
 /* =========================================================
-   ПРОВЕРКА ОПЛАТЫ
+   ОТКРЫТИЕ ТЕСТА
+========================================================= */
+
+function openIntro() {
+
+  $('locked')
+    .classList
+    .add('hidden');
+
+  $('intro')
+    .classList
+    .remove('hidden');
+
+}
+
+
+/* =========================================================
+   ПРОВЕРКА ДОСТУПА
 ========================================================= */
 
 async function checkAccess() {
 
-  if (!userId) {
+  if (!tg || !userId) {
 
     showLocked(
       'Открой тест через Telegram.'
@@ -936,21 +940,56 @@ async function checkAccess() {
   }
 
 
+  /*
+   * ВАЖНО:
+   *
+   * Если URL содержит ?test=1,
+   * тестовый режим включён.
+   *
+   * Оплата НЕ проверяется.
+   */
+
+  if (TEST_MODE) {
+
+    console.log(
+      'Book Quiz: TEST_MODE=true'
+    );
+
+    openIntro();
+
+    return true;
+
+  }
+
+
+  /*
+   * Боевой режим.
+   *
+   * Здесь проверяем доступ
+   * через Render.
+   */
+
   try {
 
     const response =
       await fetch(
+        API_BASE +
         '/check-access?user_id=' +
         encodeURIComponent(
           userId
-        )
+        ),
+        {
+          method:'GET',
+          cache:'no-store'
+        }
       );
 
 
     if (!response.ok) {
 
       throw new Error(
-        'Server error'
+        'Server error: ' +
+        response.status
       );
 
     }
@@ -965,13 +1004,7 @@ async function checkAccess() {
       data.paid === true
     ) {
 
-      $('locked')
-        .classList
-        .add('hidden');
-
-      $('intro')
-        .classList
-        .remove('hidden');
+      openIntro();
 
       return true;
 
@@ -988,6 +1021,7 @@ async function checkAccess() {
   } catch (error) {
 
     console.error(
+      'Access check failed:',
       error
     );
 
@@ -2151,7 +2185,14 @@ function showResult() {
 
           notify();
 
-        } catch (e) {}
+        } catch (e) {
+
+          console.error(
+            'sendData error:',
+            e
+          );
+
+        }
 
       }
     );
@@ -2192,15 +2233,13 @@ $('go')
 
 
 /* =========================================================
-   ПРОВЕРКА ДОСТУПА
+   ЗАПУСК ПРОВЕРКИ ДОСТУПА
 ========================================================= */
 
 checkAccess();
-
 
 </script>
 
 </body>
 
 </html>
-```
