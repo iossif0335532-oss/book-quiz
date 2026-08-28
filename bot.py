@@ -1,8 +1,9 @@
+```python
 import os
 import json
 import requests
 
-from flask import Flask, request
+from flask import Flask, request, jsonify
 
 
 # ============================================================
@@ -57,7 +58,7 @@ def tg(method, data):
         log(
             f"Telegram {method}: "
             f"{response.status_code} "
-            f"{response.text[:1000]}"
+            f"{response.text[:2000]}"
         )
 
         try:
@@ -71,11 +72,13 @@ def tg(method, data):
 
 
 # ============================================================
-# ОПЛАЧЕННЫЕ ПОЛЬЗОВАТЕЛИ
+# PAID USERS
 # ============================================================
 
 def load_paid_users():
+
     try:
+
         if not os.path.exists(PAID_USERS_FILE):
             return set()
 
@@ -84,25 +87,36 @@ def load_paid_users():
             "r",
             encoding="utf-8"
         ) as f:
+
             data = json.load(f)
 
         if not isinstance(data, list):
             return set()
 
-        return {str(user_id) for user_id in data}
+        return {
+            str(user_id)
+            for user_id in data
+        }
 
     except Exception as e:
-        log(f"Ошибка загрузки paid_users: {e}")
+
+        log(
+            f"Ошибка загрузки paid_users: {e}"
+        )
+
         return set()
 
 
 def save_paid_users(users):
+
     try:
+
         with open(
             PAID_USERS_FILE,
             "w",
             encoding="utf-8"
         ) as f:
+
             json.dump(
                 sorted(list(users)),
                 f,
@@ -110,26 +124,36 @@ def save_paid_users(users):
                 indent=2
             )
 
-        log(f"PAID USERS сохранены: {len(users)}")
+        log(
+            f"PAID USERS сохранены: {len(users)}"
+        )
 
     except Exception as e:
-        log(f"Ошибка сохранения paid_users: {e}")
+
+        log(
+            f"Ошибка сохранения paid_users: {e}"
+        )
 
 
 PAID_USERS = load_paid_users()
 
 
 def add_paid_user(user_id):
+
     user_id = str(user_id)
 
     PAID_USERS.add(user_id)
 
     save_paid_users(PAID_USERS)
 
-    log(f"Пользователь добавлен в PAID_USERS: {user_id}")
+    log(
+        f"Пользователь добавлен в PAID_USERS: "
+        f"{user_id}"
+    )
 
 
 def is_paid(user_id):
+
     return str(user_id) in PAID_USERS
 
 
@@ -138,12 +162,16 @@ def is_paid(user_id):
 # ============================================================
 
 def load_books():
+
     try:
+
         if not os.path.exists(DATABASE_FILE):
+
             log(
                 f"База книг НЕ найдена: "
                 f"{DATABASE_FILE}"
             )
+
             return []
 
         with open(
@@ -151,15 +179,22 @@ def load_books():
             "r",
             encoding="utf-8-sig"
         ) as f:
+
             data = json.load(f)
 
         if isinstance(data, dict):
-            books = data.get("books", [])
+
+            books = data.get(
+                "books",
+                []
+            )
 
         elif isinstance(data, list):
+
             books = data
 
         else:
+
             books = []
 
         if not isinstance(books, list):
@@ -179,15 +214,20 @@ def load_books():
         return books
 
     except Exception as e:
-        log(f"Ошибка загрузки базы книг: {e}")
+
+        log(
+            f"Ошибка загрузки базы книг: {e}"
+        )
+
         return []
 
 
 # ============================================================
-# НОРМАЛИЗАЦИЯ СТРОК
+# НОРМАЛИЗАЦИЯ
 # ============================================================
 
 def normalize(value):
+
     return (
         str(value or "")
         .strip()
@@ -197,10 +237,11 @@ def normalize(value):
 
 
 # ============================================================
-# ПОИСК КНИГИ В БАЗЕ
+# ПОИСК КНИГИ
 # ============================================================
 
 def find_book(title):
+
     wanted = normalize(title)
 
     if not wanted:
@@ -209,10 +250,11 @@ def find_book(title):
     books = load_books()
 
     # --------------------------------------------------------
-    # 1. Точное совпадение названия
+    # 1. Точное совпадение
     # --------------------------------------------------------
 
     for book in books:
+
         book_title = normalize(
             book.get("title", "")
         )
@@ -221,7 +263,7 @@ def find_book(title):
             return book
 
     # --------------------------------------------------------
-    # 2. Совпадение без скобок
+    # 2. Без скобок и кавычек
     # --------------------------------------------------------
 
     wanted_clean = (
@@ -233,6 +275,7 @@ def find_book(title):
     )
 
     for book in books:
+
         book_title = normalize(
             book.get("title", "")
         )
@@ -253,6 +296,7 @@ def find_book(title):
     # --------------------------------------------------------
 
     for book in books:
+
         book_title = normalize(
             book.get("title", "")
         )
@@ -267,22 +311,30 @@ def find_book(title):
 
 
 # ============================================================
-# ПОЛУЧЕНИЕ ИМЕНИ PDF
+# ИМЯ PDF
 # ============================================================
 
 def get_book_filename(book):
+
     filename = str(
-        book.get("filename", "")
+        book.get(
+            "filename",
+            ""
+        )
     ).strip()
 
     if filename:
         return filename
 
     filepath = str(
-        book.get("filepath", "")
+        book.get(
+            "filepath",
+            ""
+        )
     ).strip()
 
     if filepath:
+
         filepath = filepath.replace(
             "\\",
             "/"
@@ -298,15 +350,23 @@ def get_book_filename(book):
 # ============================================================
 
 def find_pdf(book):
+
     filename = get_book_filename(book)
 
     if not filename:
+
+        log(
+            "У книги отсутствует filename/filepath"
+        )
+
         return None
 
-    log(f"Ищем PDF: {filename}")
+    log(
+        f"Ищем PDF: {filename}"
+    )
 
     # --------------------------------------------------------
-    # 1. books/filename.pdf
+    # 1. books/filename
     # --------------------------------------------------------
 
     direct_path = os.path.join(
@@ -315,25 +375,29 @@ def find_pdf(book):
     )
 
     if os.path.isfile(direct_path):
+
         log(
             f"PDF найден: {direct_path}"
         )
+
         return direct_path
 
     # --------------------------------------------------------
-    # 2. Рядом с bot.py
+    # 2. Корень проекта
     # --------------------------------------------------------
 
     root_path = filename
 
     if os.path.isfile(root_path):
+
         log(
             f"PDF найден в корне: {root_path}"
         )
+
         return root_path
 
     # --------------------------------------------------------
-    # 3. Рекурсивный поиск внутри books
+    # 3. Рекурсивно внутри books
     # --------------------------------------------------------
 
     if os.path.isdir(BOOKS_DIR):
@@ -341,6 +405,7 @@ def find_pdf(book):
         for root, dirs, files in os.walk(
             BOOKS_DIR
         ):
+
             for file in files:
 
                 if file == filename:
@@ -365,16 +430,22 @@ def find_pdf(book):
 
 
 # ============================================================
-# ОТПРАВКА СООБЩЕНИЯ
+# ОТПРАВКА ТЕКСТА
 # ============================================================
 
-def send_text(chat_id, text, reply_markup=None):
+def send_text(
+    chat_id,
+    text,
+    reply_markup=None
+):
+
     data = {
         "chat_id": chat_id,
         "text": text
     }
 
     if reply_markup is not None:
+
         data["reply_markup"] = reply_markup
 
     return tg(
@@ -388,17 +459,25 @@ def send_text(chat_id, text, reply_markup=None):
 # ============================================================
 
 def quiz_button():
+
     return {
+
         "inline_keyboard": [
+
             [
+
                 {
                     "text": "📚 Пройти тест",
+
                     "web_app": {
                         "url": WEB_APP_URL
                     }
                 }
+
             ]
+
         ]
+
     }
 
 
@@ -407,48 +486,78 @@ def quiz_button():
 # ============================================================
 
 def buy_button():
+
     return {
+
         "inline_keyboard": [
+
             [
+
                 {
-                    "text": f"🔓 Купить тест — {PRICE_STARS} ⭐",
-                    "callback_data": "buy_test"
+                    "text":
+                        f"🔓 Купить тест — {PRICE_STARS} ⭐",
+
+                    "callback_data":
+                        "buy_test"
                 }
+
             ]
+
         ]
+
     }
 
 
 # ============================================================
-# ОТПРАВКА PDF
+# ОТПРАВКА КНИГИ
 # ============================================================
 
-def send_book(chat_id, title):
+def send_book(
+    chat_id,
+    title
+):
+
     log("")
-    log("=" * 60)
+    log("=" * 70)
     log("ОТПРАВКА КНИГИ")
-    log("=" * 60)
-    log(f"Результат теста: {title}")
+    log("=" * 70)
+
+    log(
+        f"Chat ID: {chat_id}"
+    )
+
+    log(
+        f"Результат теста: {title}"
+    )
+
+    # --------------------------------------------------------
+    # Ищем книгу в базе
+    # --------------------------------------------------------
 
     book = find_book(title)
 
     if not book:
+
         log(
-            f"Книга не найдена в базе: {title}"
+            f"КНИГА НЕ НАЙДЕНА В БАЗЕ: {title}"
         )
 
         send_text(
             chat_id,
             (
-                "⚠️ Я получил результат теста, "
-                "но не нашёл такую книгу в базе.\n\n"
+                "⚠️ Тест завершён, "
+                "но книга не найдена в базе.\n\n"
                 f"📕 {title}\n\n"
-                "Проверь название книги в "
-                "recommendation_database.json."
+                "Проверь название книги "
+                "в recommendation_database.json."
             )
         )
 
         return False
+
+    # --------------------------------------------------------
+    # Данные книги
+    # --------------------------------------------------------
 
     real_title = str(
         book.get(
@@ -464,28 +573,53 @@ def send_book(chat_id, title):
         )
     ).strip()
 
-    filename = get_book_filename(book)
+    filename = get_book_filename(
+        book
+    )
 
-    log(f"Книга в базе: {real_title}")
-    log(f"Автор: {author}")
-    log(f"Filename: {filename}")
+    log(
+        f"Книга в базе: {real_title}"
+    )
+
+    log(
+        f"Автор: {author}"
+    )
+
+    log(
+        f"Filename: {filename}"
+    )
+
+    # --------------------------------------------------------
+    # Ищем PDF
+    # --------------------------------------------------------
 
     pdf_path = find_pdf(book)
 
     if not pdf_path:
+
+        log(
+            f"PDF НЕ НАЙДЕН для книги: "
+            f"{real_title}"
+        )
+
         send_text(
             chat_id,
             (
                 "🎉 Тест завершён!\n\n"
-                f"📕 Твоя книга:\n{real_title}\n\n"
-                "Но PDF-файл этой книги пока "
+                f"📕 {real_title}\n\n"
+                "Но PDF этой книги "
                 "не найден на сервере.\n\n"
-                f"Искомый файл:\n{filename}\n\n"
-                "Файл нужно положить в папку books."
+                f"Искомый файл:\n"
+                f"{filename}\n\n"
+                "Проверь папку books."
             )
         )
 
         return False
+
+    # --------------------------------------------------------
+    # Caption
+    # --------------------------------------------------------
 
     caption = (
         "🎉 Твой результат готов!\n\n"
@@ -493,51 +627,81 @@ def send_book(chat_id, title):
     )
 
     if author:
-        caption += f"\n✍️ {author}"
 
-    caption += "\n\nПриятного чтения! 📚"
+        caption += (
+            f"\n✍️ {author}"
+        )
+
+    caption += (
+        "\n\nПриятного чтения! 📚"
+    )
+
+    log(
+        f"Отправляем файл: {pdf_path}"
+    )
+
+    # --------------------------------------------------------
+    # Отправляем PDF
+    # --------------------------------------------------------
 
     try:
+
         with open(
             pdf_path,
             "rb"
         ) as document:
 
             response = requests.post(
+
                 f"{API}/sendDocument",
+
                 data={
-                    "chat_id": str(chat_id),
-                    "caption": caption
+                    "chat_id":
+                        str(chat_id),
+
+                    "caption":
+                        caption
                 },
+
                 files={
                     "document": (
-                        os.path.basename(pdf_path),
+                        os.path.basename(
+                            pdf_path
+                        ),
                         document,
                         "application/pdf"
                     )
                 },
+
                 timeout=180
             )
 
         log(
-            f"sendDocument: "
+            "sendDocument: "
             f"{response.status_code} "
-            f"{response.text[:1000]}"
+            f"{response.text[:2000]}"
         )
 
         if response.ok:
-            log(
-                f"КНИГА УСПЕШНО ОТПРАВЛЕНА: "
-                f"{real_title}"
-            )
-            return True
+
+            result = response.json()
+
+            if result.get("ok"):
+
+                log(
+                    f"КНИГА УСПЕШНО ОТПРАВЛЕНА: "
+                    f"{real_title}"
+                )
+
+                return True
 
         send_text(
             chat_id,
             (
                 "⚠️ PDF найден, "
-                "но Telegram не смог его отправить.\n\n"
-                f"Ошибка: {response.text[:500]}"
+                "но Telegram не смог "
+                "его отправить.\n\n"
+                f"{response.text[:1000]}"
             )
         )
 
@@ -546,13 +710,14 @@ def send_book(chat_id, title):
     except Exception as e:
 
         log(
-            f"Ошибка отправки PDF: {e}"
+            f"ОШИБКА ОТПРАВКИ PDF: {e}"
         )
 
         send_text(
             chat_id,
             (
-                "⚠️ Произошла ошибка при отправке книги.\n\n"
+                "⚠️ Произошла ошибка "
+                "при отправке книги.\n\n"
                 f"{e}"
             )
         )
@@ -566,15 +731,19 @@ def send_book(chat_id, title):
 
 @app.route("/")
 def home():
+
     try:
+
         with open(
             "index.html",
             "r",
             encoding="utf-8"
         ) as f:
+
             return f.read()
 
     except Exception as e:
+
         return (
             "Ошибка загрузки index.html: "
             + str(e)
@@ -587,6 +756,7 @@ def home():
 
 @app.route("/health")
 def health():
+
     return "OK"
 
 
@@ -596,12 +766,14 @@ def health():
 
 @app.route("/check-access")
 def check_access():
+
     user_id = request.args.get(
         "user_id",
         ""
     ).strip()
 
     if not user_id:
+
         return {
             "paid": False
         }
@@ -617,23 +789,213 @@ def check_access():
 
 @app.route("/testpay")
 def testpay():
+
     user_id = request.args.get(
         "user_id",
         ""
     ).strip()
 
     if not user_id:
+
         return (
             "Для теста открой:\n"
             "/testpay?user_id=ТВОЙ_TELEGRAM_ID"
         )
 
-    add_paid_user(user_id)
+    add_paid_user(
+        user_id
+    )
 
     return (
         "OK. Доступ выдан.\n"
         f"user_id={user_id}"
     )
+
+
+# ============================================================
+# НОВЫЙ ENDPOINT
+#
+# СЮДА MINI APP ОТПРАВЛЯЕТ РЕЗУЛЬТАТ
+# ============================================================
+
+@app.route(
+    "/submit-result",
+    methods=["POST"]
+)
+def submit_result():
+
+    log("")
+    log("=" * 70)
+    log("НОВЫЙ РЕЗУЛЬТАТ ТЕСТА")
+    log("=" * 70)
+
+    try:
+
+        data = request.get_json(
+            silent=True
+        ) or {}
+
+        log(
+            json.dumps(
+                data,
+                ensure_ascii=False
+            )[:10000]
+        )
+
+        # ----------------------------------------------------
+        # USER ID
+        # ----------------------------------------------------
+
+        user_id = str(
+            data.get(
+                "user_id",
+                ""
+            )
+        ).strip()
+
+        if not user_id:
+
+            log(
+                "ОШИБКА: отсутствует user_id"
+            )
+
+            return jsonify({
+                "ok": False,
+                "error":
+                    "user_id_required"
+            }), 400
+
+        # ----------------------------------------------------
+        # ПРОВЕРКА ОПЛАТЫ
+        # ----------------------------------------------------
+
+        if not is_paid(user_id):
+
+            log(
+                f"ПОЛЬЗОВАТЕЛЬ НЕ ОПЛАТИЛ: "
+                f"{user_id}"
+            )
+
+            return jsonify({
+                "ok": False,
+                "error":
+                    "not_paid"
+            }), 403
+
+        # ----------------------------------------------------
+        # ACTION
+        # ----------------------------------------------------
+
+        action = data.get(
+            "action"
+        )
+
+        if action != "quiz_result":
+
+            log(
+                f"НЕВЕРНЫЙ ACTION: {action}"
+            )
+
+            return jsonify({
+                "ok": False,
+                "error":
+                    "invalid_action"
+            }), 400
+
+        # ----------------------------------------------------
+        # КНИГА
+        # ----------------------------------------------------
+
+        book_title = str(
+            data.get(
+                "book",
+                ""
+            )
+        ).strip()
+
+        if not book_title:
+
+            log(
+                "ОШИБКА: книга отсутствует"
+            )
+
+            return jsonify({
+                "ok": False,
+                "error":
+                    "book_required"
+            }), 400
+
+        archetype = str(
+            data.get(
+                "archetype",
+                ""
+            )
+        ).strip()
+
+        match = data.get(
+            "match",
+            ""
+        )
+
+        log(
+            f"USER ID: {user_id}"
+        )
+
+        log(
+            f"ТИПАЖ: {archetype}"
+        )
+
+        log(
+            f"КНИГА: {book_title}"
+        )
+
+        log(
+            f"MATCH: {match}"
+        )
+
+        # ----------------------------------------------------
+        # ОТПРАВЛЯЕМ КНИГУ
+        # ----------------------------------------------------
+
+        success = send_book(
+            user_id,
+            book_title
+        )
+
+        if success:
+
+            log(
+                "РЕЗУЛЬТАТ УСПЕШНО ОБРАБОТАН"
+            )
+
+            return jsonify({
+                "ok": True,
+                "sent": True,
+                "book": book_title
+            })
+
+        log(
+            "КНИГА НЕ БЫЛА ОТПРАВЛЕНА"
+        )
+
+        return jsonify({
+            "ok": False,
+            "sent": False,
+            "error":
+                "book_not_sent"
+        }), 500
+
+    except Exception as e:
+
+        log(
+            f"ОШИБКА /submit-result: {e}"
+        )
+
+        return jsonify({
+            "ok": False,
+            "error":
+                str(e)
+        }), 500
 
 
 # ============================================================
@@ -672,8 +1034,8 @@ def webhook():
 
     if pre_checkout:
 
-        pre_checkout_id = pre_checkout.get(
-            "id"
+        pre_checkout_id = (
+            pre_checkout.get("id")
         )
 
         log(
@@ -686,6 +1048,7 @@ def webhook():
             {
                 "pre_checkout_query_id":
                     pre_checkout_id,
+
                 "ok":
                     True
             }
@@ -745,6 +1108,7 @@ def webhook():
         if callback_data == "buy_test":
 
             if not chat_id:
+
                 return "ok"
 
             tg(
@@ -770,6 +1134,7 @@ def webhook():
                             {
                                 "label":
                                     "Прохождение теста",
+
                                 "amount":
                                     PRICE_STARS
                             }
@@ -788,6 +1153,7 @@ def webhook():
     )
 
     if not message:
+
         return "ok"
 
     chat = message.get(
@@ -800,9 +1166,12 @@ def webhook():
     )
 
     if not chat_id:
+
         return "ok"
 
-    user_id = str(chat_id)
+    user_id = str(
+        chat_id
+    )
 
     # ========================================================
     # УСПЕШНАЯ ОПЛАТА
@@ -815,7 +1184,8 @@ def webhook():
     if successful_payment:
 
         log(
-            f"ОПЛАТА ПОЛУЧЕНА: {user_id}"
+            f"ОПЛАТА ПОЛУЧЕНА: "
+            f"{user_id}"
         )
 
         add_paid_user(
@@ -836,6 +1206,8 @@ def webhook():
 
     # ========================================================
     # WEB APP DATA
+    #
+    # ОСТАВЛЯЕМ ДЛЯ СОВМЕСТИМОСТИ
     # ========================================================
 
     web_app_data = message.get(
@@ -844,157 +1216,58 @@ def webhook():
 
     if web_app_data:
 
-        log("")
-        log("WEB APP DATA:")
         log(
-            json.dumps(
-                web_app_data,
-                ensure_ascii=False
-            )[:5000]
+            "WEB APP DATA ПОЛУЧЕН"
         )
-
-        # ----------------------------------------------------
-        # ПРОВЕРКА ОПЛАТЫ
-        # ----------------------------------------------------
-
-        if not is_paid(user_id):
-
-            log(
-                f"ПОПЫТКА ПОЛУЧИТЬ КНИГУ БЕЗ ОПЛАТЫ: "
-                f"{user_id}"
-            )
-
-            send_text(
-                chat_id,
-                (
-                    "🔒 Тест не оплачен.\n\n"
-                    "Сначала приобрети прохождение "
-                    f"за {PRICE_STARS} ⭐."
-                ),
-                buy_button()
-            )
-
-            return "ok"
-
-        # ----------------------------------------------------
-        # ПОЛУЧАЕМ DATA
-        # ----------------------------------------------------
 
         raw_data = web_app_data.get(
             "data",
             ""
         )
 
-        if not raw_data:
+        if raw_data:
 
-            send_text(
-                chat_id,
-                "⚠️ Тест не передал результат."
-            )
+            try:
 
-            return "ok"
-
-        # ----------------------------------------------------
-        # JSON
-        # ----------------------------------------------------
-
-        try:
-
-            result = json.loads(
-                raw_data
-            )
-
-        except Exception as e:
-
-            log(
-                f"Ошибка JSON результата: {e}"
-            )
-
-            send_text(
-                chat_id,
-                (
-                    "⚠️ Не удалось прочитать "
-                    "результат теста."
+                result = json.loads(
+                    raw_data
                 )
-            )
 
-            return "ok"
-
-        log("РЕЗУЛЬТАТ:")
-        log(
-            json.dumps(
-                result,
-                ensure_ascii=False
-            )[:5000]
-        )
-
-        # ----------------------------------------------------
-        # ACTION
-        # ----------------------------------------------------
-
-        action = result.get(
-            "action"
-        )
-
-        if action != "quiz_result":
-
-            log(
-                f"Неизвестное действие: {action}"
-            )
-
-            return "ok"
-
-        # ----------------------------------------------------
-        # КНИГА
-        # ----------------------------------------------------
-
-        book_title = result.get(
-            "book",
-            ""
-        )
-
-        archetype = result.get(
-            "archetype",
-            ""
-        )
-
-        match = result.get(
-            "match",
-            ""
-        )
-
-        log(
-            f"Типаж: {archetype}"
-        )
-
-        log(
-            f"Книга: {book_title}"
-        )
-
-        log(
-            f"Совпадение: {match}"
-        )
-
-        if not book_title:
-
-            send_text(
-                chat_id,
-                (
-                    "⚠️ В результате теста "
-                    "не указана книга."
+                log(
+                    "WEB APP RESULT:"
                 )
-            )
 
-            return "ok"
+                log(
+                    json.dumps(
+                        result,
+                        ensure_ascii=False
+                    )[:5000]
+                )
 
-        # ----------------------------------------------------
-        # ОТПРАВЛЯЕМ КНИГУ
-        # ----------------------------------------------------
+                if (
+                    result.get("action")
+                    == "quiz_result"
+                ):
 
-        send_book(
-            chat_id,
-            book_title
-        )
+                    if is_paid(user_id):
+
+                        book_title = result.get(
+                            "book",
+                            ""
+                        )
+
+                        if book_title:
+
+                            send_book(
+                                user_id,
+                                book_title
+                            )
+
+            except Exception as e:
+
+                log(
+                    f"Ошибка WEB APP DATA: {e}"
+                )
 
         return "ok"
 
@@ -1008,7 +1281,7 @@ def webhook():
     ).strip()
 
     # ========================================================
-    # /TESTPAY
+    # TESTPAY
     # ========================================================
 
     if text == "/testpay":
@@ -1021,8 +1294,8 @@ def webhook():
             chat_id,
             (
                 "🧪 ТЕСТОВАЯ ОПЛАТА АКТИВИРОВАНА.\n\n"
-                "Твой Telegram ID добавлен в список "
-                "оплативших пользователей.\n\n"
+                "Твой Telegram ID добавлен "
+                "в список оплативших.\n\n"
                 "Теперь можешь проходить тест 👇"
             ),
             quiz_button()
@@ -1031,7 +1304,7 @@ def webhook():
         return "ok"
 
     # ========================================================
-    # /START
+    # START
     # ========================================================
 
     if text.startswith("/start"):
@@ -1079,12 +1352,32 @@ if __name__ == "__main__":
     log("=" * 70)
     log("BOOK QUIZ BOT STARTING")
     log("=" * 70)
-    log(f"PORT: {os.environ.get('PORT', '10000')}")
-    log(f"WEB APP: {WEB_APP_URL}")
-    log(f"DATABASE: {DATABASE_FILE}")
-    log(f"BOOKS: {BOOKS_DIR}")
-    log(f"BOOKS IN DATABASE: {len(books)}")
-    log(f"PAID USERS: {len(PAID_USERS)}")
+
+    log(
+        f"PORT: "
+        f"{os.environ.get('PORT', '10000')}"
+    )
+
+    log(
+        f"WEB APP: {WEB_APP_URL}"
+    )
+
+    log(
+        f"DATABASE: {DATABASE_FILE}"
+    )
+
+    log(
+        f"BOOKS: {BOOKS_DIR}"
+    )
+
+    log(
+        f"BOOKS IN DATABASE: {len(books)}"
+    )
+
+    log(
+        f"PAID USERS: {len(PAID_USERS)}"
+    )
+
     log("=" * 70)
 
     app.run(
@@ -1096,3 +1389,4 @@ if __name__ == "__main__":
             )
         )
     )
+```
