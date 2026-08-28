@@ -5,6 +5,7 @@ import requests
 from flask import Flask, request
 
 TOKEN = os.environ["BOT_TOKEN"]
+
 API = f"https://api.telegram.org/bot{TOKEN}"
 
 app = Flask(__name__)
@@ -38,7 +39,6 @@ def save_paid_users(users):
                 ensure_ascii=False,
                 indent=2
             )
-
     except Exception as e:
         print("Ошибка сохранения paid_users:", e)
 
@@ -80,10 +80,8 @@ def load_books():
 
         if isinstance(data, dict):
             books = data.get("books", [])
-
         elif isinstance(data, list):
             books = data
-
         else:
             books = []
 
@@ -161,8 +159,10 @@ def find_pdf(book):
     if os.path.isfile(path):
         return path
 
-    if os.path.isfile(filename):
-        return filename
+    path = filename
+
+    if os.path.isfile(path):
+        return path
 
     if os.path.exists(BOOKS_DIR):
         for root, dirs, files in os.walk(BOOKS_DIR):
@@ -174,22 +174,27 @@ def find_pdf(book):
 
 
 def send_book(chat_id, title):
-    print("Ищем книгу:", title)
+    print()
+    print("========================================")
+    print("ОТПРАВКА КНИГИ")
+    print("Пользователь:", chat_id)
+    print("Результат:", title)
+    print("========================================")
 
     book = find_book(title)
 
     if not book:
-        print("Книга не найдена:", title)
+        print("Книга НЕ найдена в базе:", title)
 
         tg(
             "sendMessage",
             {
                 "chat_id": chat_id,
                 "text": (
-                    "⚠️ Результат определён:\n\n"
-                    f"📕 {title}\n\n"
-                    "Но книга пока не подключена "
-                    "к серверу."
+                    "⚠️ Результат теста получен.\n\n"
+                    f"📕 Книга: {title}\n\n"
+                    "Но этой книги нет в "
+                    "recommendation_database.json."
                 )
             }
         )
@@ -207,6 +212,7 @@ def send_book(chat_id, title):
     pdf_path = find_pdf(book)
 
     print("Название:", real_title)
+    print("Автор:", author)
     print("PDF:", pdf_path)
 
     if not pdf_path:
@@ -216,9 +222,11 @@ def send_book(chat_id, title):
                 "chat_id": chat_id,
                 "text": (
                     "🎉 Тест завершён!\n\n"
-                    f"📕 Твоя книга:\n{real_title}\n\n"
-                    "Но PDF этой книги пока "
-                    "не загружен на сервер."
+                    "📕 Твоя книга:\n"
+                    f"{real_title}\n\n"
+                    "⚠️ Но PDF этой книги пока "
+                    "не найден на сервере.\n\n"
+                    "Проверь папку books."
                 )
             }
         )
@@ -228,29 +236,25 @@ def send_book(chat_id, title):
     try:
         with open(pdf_path, "rb") as document:
 
+            caption = (
+                "🎉 Твой результат готов!\n\n"
+                f"📕 {real_title}"
+            )
+
+            if author:
+                caption += f"\n✍️ {author}"
+
+            caption += "\n\nПриятного чтения! 📚"
+
             response = requests.post(
                 f"{API}/sendDocument",
-
                 data={
                     "chat_id": chat_id,
-                    "caption": (
-                        "🎉 Твой результат готов!\n\n"
-                        f"📕 {real_title}"
-                        +
-                        (
-                            f"\n✍️ {author}"
-                            if author
-                            else ""
-                        )
-                        +
-                        "\n\nПриятного чтения! 📚"
-                    )
+                    "caption": caption
                 },
-
                 files={
                     "document": document
                 },
-
                 timeout=120
             )
 
@@ -291,7 +295,8 @@ def home():
 
     except Exception as e:
         return (
-            "Ошибка загрузки index.html: " + str(e)
+            "Ошибка загрузки index.html: "
+            + str(e)
         ), 500
 
 
@@ -345,15 +350,11 @@ def webhook():
 
     if pre_checkout:
 
-        pre_checkout_id = pre_checkout.get(
-            "id"
-        )
-
         tg(
             "answerPreCheckoutQuery",
             {
                 "pre_checkout_query_id":
-                    pre_checkout_id,
+                    pre_checkout.get("id"),
                 "ok": True
             }
         )
@@ -370,9 +371,7 @@ def webhook():
 
     if callback:
 
-        callback_id = callback.get(
-            "id"
-        )
+        callback_id = callback.get("id")
 
         message = callback.get(
             "message",
@@ -382,18 +381,11 @@ def webhook():
         chat_id = message.get(
             "chat",
             {}
-        ).get(
-            "id"
-        )
+        ).get("id")
 
-        data = callback.get(
-            "data"
-        )
+        data = callback.get("data")
 
-        print(
-            "CALLBACK:",
-            data
-        )
+        print("CALLBACK:", data)
 
         if data == "buy_test":
 
@@ -409,29 +401,21 @@ def webhook():
                 "sendInvoice",
                 {
                     "chat_id": chat_id,
-
-                    "title":
-                        "Book Quiz",
-
-                    "description":
-                        "Одно прохождение теста «Какая книга тебя ждёт?»",
-
+                    "title": "Book Quiz",
+                    "description": (
+                        "Одно прохождение теста "
+                        "«Какая книга тебя ждёт?»"
+                    ),
                     "payload":
                         f"book_quiz_{chat_id}",
-
-                    "currency":
-                        "XTR",
-
-                    "prices":
-                        [
-                            {
-                                "label":
-                                    "Прохождение теста",
-
-                                "amount":
-                                    200
-                            }
-                        ]
+                    "currency": "XTR",
+                    "prices": [
+                        {
+                            "label":
+                                "Прохождение теста",
+                            "amount": 200
+                        }
+                    ]
                 }
             )
 
@@ -441,9 +425,7 @@ def webhook():
     # MESSAGE
     # ========================================================
 
-    message = update.get(
-        "message"
-    )
+    message = update.get("message")
 
     if not message:
         return "ok"
@@ -451,9 +433,12 @@ def webhook():
     chat_id = message.get(
         "chat",
         {}
-    ).get(
-        "id"
-    )
+    ).get("id")
+
+    if not chat_id:
+        return "ok"
+
+    user_id = str(chat_id)
 
     # ========================================================
     # WEB APP DATA
@@ -465,18 +450,16 @@ def webhook():
 
     if web_app_data:
 
-        print(
-            "WEB APP DATA:",
-            web_app_data
-        )
+        print()
+        print("WEB APP DATA:")
+        print(web_app_data)
 
-        user_id = str(chat_id)
+        # Проверяем оплату / тестовый доступ
 
         if user_id not in PAID_USERS:
 
             print(
-                "ПОПЫТКА ОТПРАВИТЬ РЕЗУЛЬТАТ "
-                "БЕЗ ОПЛАТЫ:",
+                "РЕЗУЛЬТАТ БЕЗ ОПЛАТЫ:",
                 user_id
             )
 
@@ -484,28 +467,23 @@ def webhook():
                 "sendMessage",
                 {
                     "chat_id": chat_id,
-
                     "text": (
                         "🔒 Тест не оплачен.\n\n"
-                        "Сначала приобрети прохождение "
-                        "за 200 ⭐."
+                        "Сначала приобрети "
+                        "прохождение за 200 ⭐."
                     ),
-
-                    "reply_markup":
-                        {
-                            "inline_keyboard":
-                                [
-                                    [
-                                        {
-                                            "text":
-                                                "🔓 Купить тест — 200 ⭐",
-
-                                            "callback_data":
-                                                "buy_test"
-                                        }
-                                    ]
-                                ]
-                        }
+                    "reply_markup": {
+                        "inline_keyboard": [
+                            [
+                                {
+                                    "text":
+                                        "🔓 Купить тест — 200 ⭐",
+                                    "callback_data":
+                                        "buy_test"
+                                }
+                            ]
+                        ]
+                    }
                 }
             )
 
@@ -517,10 +495,7 @@ def webhook():
         )
 
         try:
-
-            result = json.loads(
-                raw_data
-            )
+            result = json.loads(raw_data)
 
         except Exception as e:
 
@@ -532,19 +507,16 @@ def webhook():
             tg(
                 "sendMessage",
                 {
-                    "chat_id":
-                        chat_id,
-
+                    "chat_id": chat_id,
                     "text":
-                        "⚠️ Не удалось прочитать результат теста."
+                        "⚠️ Не удалось прочитать "
+                        "результат теста."
                 }
             )
 
             return "ok"
 
-        action = result.get(
-            "action"
-        )
+        action = result.get("action")
 
         if action != "quiz_result":
 
@@ -555,9 +527,7 @@ def webhook():
 
             return "ok"
 
-        book_title = result.get(
-            "book"
-        )
+        book_title = result.get("book")
 
         archetype = result.get(
             "archetype",
@@ -569,6 +539,7 @@ def webhook():
             ""
         )
 
+        print()
         print("РЕЗУЛЬТАТ ТЕСТА")
         print("Типаж:", archetype)
         print("Книга:", book_title)
@@ -579,11 +550,10 @@ def webhook():
             tg(
                 "sendMessage",
                 {
-                    "chat_id":
-                        chat_id,
-
+                    "chat_id": chat_id,
                     "text":
-                        "⚠️ В результате не указана книга."
+                        "⚠️ В результате "
+                        "не указана книга."
                 }
             )
 
@@ -606,52 +576,83 @@ def webhook():
 
     if successful_payment:
 
-        user_id = str(chat_id)
+        print()
+        print("ОПЛАТА ПОЛУЧЕНА:", user_id)
 
-        print(
-            "ОПЛАТА ПОЛУЧЕНА:",
-            user_id
-        )
+        PAID_USERS.add(user_id)
 
-        PAID_USERS.add(
-            user_id
-        )
-
-        save_paid_users(
-            PAID_USERS
-        )
+        save_paid_users(PAID_USERS)
 
         tg(
             "sendMessage",
             {
-                "chat_id":
-                    chat_id,
+                "chat_id": chat_id,
+                "text": (
+                    "✅ Оплата прошла!\n\n"
+                    "Тест разблокирован.\n\n"
+                    "Нажимай кнопку и проходи тест 👇"
+                ),
+                "reply_markup": {
+                    "inline_keyboard": [
+                        [
+                            {
+                                "text":
+                                    "📚 Пройти тест",
+                                "web_app": {
+                                    "url":
+                                        "https://book-quiz.onrender.com"
+                                }
+                            }
+                        ]
+                    ]
+                }
+            }
+        )
 
-                "text":
-                    (
-                        "✅ Оплата прошла!\n\n"
-                        "Тест разблокирован.\n\n"
-                        "Нажимай кнопку и проходи тест 👇"
-                    ),
+        return "ok"
 
-                "reply_markup":
-                    {
-                        "inline_keyboard":
-                            [
-                                [
-                                    {
-                                        "text":
-                                            "📚 Пройти тест",
+    # ========================================================
+    # TEST PAYMENT
+    # ========================================================
 
-                                        "web_app":
-                                            {
-                                                "url":
-                                                    "https://book-quiz.onrender.com"
-                                            }
-                                    }
-                                ]
-                            ]
-                    }
+    text = message.get(
+        "text",
+        ""
+    ).strip()
+
+    if text == "/testpay":
+
+        print()
+        print("ТЕСТОВАЯ ОПЛАТА:", user_id)
+
+        PAID_USERS.add(user_id)
+
+        save_paid_users(PAID_USERS)
+
+        tg(
+            "sendMessage",
+            {
+                "chat_id": chat_id,
+                "text": (
+                    "🧪 ТЕСТОВЫЙ ДОСТУП АКТИВИРОВАН\n\n"
+                    "Реальные ⭐ не списывались.\n\n"
+                    "Теперь можно пройти тест "
+                    "и проверить отправку книги."
+                ),
+                "reply_markup": {
+                    "inline_keyboard": [
+                        [
+                            {
+                                "text":
+                                    "📚 Пройти тест",
+                                "web_app": {
+                                    "url":
+                                        "https://book-quiz.onrender.com"
+                                }
+                            }
+                        ]
+                    ]
+                }
             }
         )
 
@@ -661,43 +662,33 @@ def webhook():
     # START
     # ========================================================
 
-    if message.get("text") == "/start":
-
-        user_id = str(chat_id)
+    if text == "/start":
 
         if user_id in PAID_USERS:
 
             tg(
                 "sendMessage",
                 {
-                    "chat_id":
-                        chat_id,
-
-                    "text":
-                        (
-                            "📚 Book Quiz\n\n"
-                            "Тест уже разблокирован.\n"
-                            "Можешь проходить 👇"
-                        ),
-
-                    "reply_markup":
-                        {
-                            "inline_keyboard":
-                                [
-                                    [
-                                        {
-                                            "text":
-                                                "📚 Пройти тест",
-
-                                            "web_app":
-                                                {
-                                                    "url":
-                                                        "https://book-quiz.onrender.com"
-                                                }
-                                        }
-                                    ]
-                                ]
-                        }
+                    "chat_id": chat_id,
+                    "text": (
+                        "📚 Book Quiz\n\n"
+                        "Тест уже разблокирован.\n"
+                        "Можешь проходить 👇"
+                    ),
+                    "reply_markup": {
+                        "inline_keyboard": [
+                            [
+                                {
+                                    "text":
+                                        "📚 Пройти тест",
+                                    "web_app": {
+                                        "url":
+                                            "https://book-quiz.onrender.com"
+                                    }
+                                }
+                            ]
+                        ]
+                    }
                 }
             )
 
@@ -706,34 +697,30 @@ def webhook():
             tg(
                 "sendMessage",
                 {
-                    "chat_id":
-                        chat_id,
-
-                    "text":
-                        (
-                            "📚 Book Quiz\n\n"
-                            "Пройди тест и узнай, "
-                            "какая книга подходит именно тебе.\n\n"
-                            "🔓 Стоимость прохождения — 200 ⭐"
-                        ),
-
-                    "reply_markup":
-                        {
-                            "inline_keyboard":
-                                [
-                                    [
-                                        {
-                                            "text":
-                                                "🔓 Купить тест — 200 ⭐",
-
-                                            "callback_data":
-                                                "buy_test"
-                                        }
-                                    ]
-                                ]
-                        }
+                    "chat_id": chat_id,
+                    "text": (
+                        "📚 Book Quiz\n\n"
+                        "Пройди тест и узнай, "
+                        "какая книга подходит "
+                        "именно тебе.\n\n"
+                        "🔓 Стоимость прохождения — 200 ⭐"
+                    ),
+                    "reply_markup": {
+                        "inline_keyboard": [
+                            [
+                                {
+                                    "text":
+                                        "🔓 Купить тест — 200 ⭐",
+                                    "callback_data":
+                                        "buy_test"
+                                }
+                            ]
+                        ]
+                    }
                 }
             )
+
+        return "ok"
 
     return "ok"
 
@@ -742,7 +729,6 @@ if __name__ == "__main__":
 
     app.run(
         host="0.0.0.0",
-
         port=int(
             os.environ.get(
                 "PORT",
