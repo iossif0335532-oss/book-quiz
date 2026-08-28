@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+
 from flask import Flask, request
 
 # ============================================================
@@ -83,7 +84,6 @@ except Exception as e:
 def load_paid_users():
 try:
 if not os.path.exists(PAID_USERS_FILE):
-log("paid_users.json не найден. Создаём пустой список.")
 return set()
 
 ```
@@ -95,19 +95,12 @@ return set()
         data = json.load(f)
 
     if not isinstance(data, list):
-        log("paid_users.json имеет неправильный формат.")
         return set()
 
-    users = {str(user_id) for user_id in data}
-
-    log(
-        f"Загружено оплаченных пользователей: {len(users)}"
-    )
-
-    return users
+    return {str(user_id) for user_id in data}
 
 except Exception as e:
-    log(f"Ошибка загрузки paid_users.json: {e}")
+    log(f"Ошибка загрузки paid_users: {e}")
     return set()
 ```
 
@@ -130,13 +123,10 @@ indent=2
         f"PAID USERS сохранены: {len(users)}"
     )
 
-    return True
-
 except Exception as e:
     log(
-        f"Ошибка сохранения paid_users.json: {e}"
+        f"Ошибка сохранения paid_users: {e}"
     )
-    return False
 ```
 
 PAID_USERS = load_paid_users()
@@ -150,7 +140,8 @@ PAID_USERS.add(user_id)
 save_paid_users(PAID_USERS)
 
 log(
-    f"Пользователь добавлен в PAID_USERS: {user_id}"
+    f"Пользователь добавлен "
+    f"в PAID_USERS: {user_id}"
 )
 ```
 
@@ -167,7 +158,8 @@ def load_books():
 try:
 if not os.path.exists(DATABASE_FILE):
 log(
-f"База книг НЕ найдена: {DATABASE_FILE}"
+f"База книг НЕ найдена: "
+f"{DATABASE_FILE}"
 )
 return []
 
@@ -189,7 +181,6 @@ return []
         books = []
 
     if not isinstance(books, list):
-        log("Поле books имеет неправильный формат.")
         return []
 
     books = [
@@ -199,7 +190,8 @@ return []
     ]
 
     log(
-        f"База книг загружена: {len(books)} книг"
+        f"База книг загружена: "
+        f"{len(books)} книг"
     )
 
     return books
@@ -213,7 +205,7 @@ except Exception as e:
 
 # ============================================================
 
-# НОРМАЛИЗАЦИЯ СТРОК
+# НОРМАЛИЗАЦИЯ
 
 # ============================================================
 
@@ -240,9 +232,7 @@ if not wanted:
 
 books = load_books()
 
-# --------------------------------------------------------
 # 1. Точное совпадение
-# --------------------------------------------------------
 
 for book in books:
 
@@ -251,14 +241,9 @@ for book in books:
     )
 
     if book_title == wanted:
-        log(
-            f"Найдено точное совпадение: {book_title}"
-        )
         return book
 
-# --------------------------------------------------------
-# 2. Совпадение без скобок и кавычек
-# --------------------------------------------------------
+# 2. Совпадение без знаков
 
 wanted_clean = (
     wanted
@@ -287,15 +272,9 @@ for book in books:
     )
 
     if book_title_clean == wanted_clean:
-        log(
-            f"Найдено совпадение после очистки: "
-            f"{book_title}"
-        )
         return book
 
-# --------------------------------------------------------
 # 3. Частичное совпадение
-# --------------------------------------------------------
 
 for book in books:
 
@@ -307,15 +286,7 @@ for book in books:
         wanted in book_title
         or book_title in wanted
     ):
-        log(
-            f"Найдено частичное совпадение: "
-            f"{book_title}"
-        )
         return book
-
-log(
-    f"Книга НЕ найдена в базе: {title}"
-)
 
 return None
 ```
@@ -366,7 +337,8 @@ filename = get_book_filename(book)
 if not filename:
 
     log(
-        "У книги отсутствует filename/filepath."
+        "У книги отсутствует filename "
+        "и filepath"
     )
 
     return None
@@ -375,9 +347,7 @@ log(
     f"Ищем PDF: {filename}"
 )
 
-# --------------------------------------------------------
 # 1. books/filename
-# --------------------------------------------------------
 
 direct_path = os.path.join(
     BOOKS_DIR,
@@ -392,23 +362,20 @@ if os.path.isfile(direct_path):
 
     return direct_path
 
-# --------------------------------------------------------
-# 2. Файл в корне проекта
-# --------------------------------------------------------
+# 2. Корень проекта
 
 root_path = filename
 
 if os.path.isfile(root_path):
 
     log(
-        f"PDF найден в корне: {root_path}"
+        f"PDF найден в корне: "
+        f"{root_path}"
     )
 
     return root_path
 
-# --------------------------------------------------------
 # 3. Рекурсивный поиск
-# --------------------------------------------------------
 
 if os.path.isdir(BOOKS_DIR):
 
@@ -432,34 +399,6 @@ if os.path.isdir(BOOKS_DIR):
 
                 return found_path
 
-# --------------------------------------------------------
-# 4. Поиск без учёта регистра
-# --------------------------------------------------------
-
-if os.path.isdir(BOOKS_DIR):
-
-    wanted_filename = filename.lower()
-
-    for root, dirs, files in os.walk(
-        BOOKS_DIR
-    ):
-
-        for file in files:
-
-            if file.lower() == wanted_filename:
-
-                found_path = os.path.join(
-                    root,
-                    file
-                )
-
-                log(
-                    f"PDF найден без учёта регистра: "
-                    f"{found_path}"
-                )
-
-                return found_path
-
 log(
     f"PDF НЕ найден: {filename}"
 )
@@ -469,7 +408,7 @@ return None
 
 # ============================================================
 
-# ОТПРАВКА СООБЩЕНИЯ
+# ОТПРАВКА ТЕКСТА
 
 # ============================================================
 
@@ -486,7 +425,6 @@ data = {
 }
 
 if reply_markup is not None:
-
     data["reply_markup"] = reply_markup
 
 return tg(
@@ -544,20 +482,18 @@ return {
 
 # ============================================================
 
-# ОТПРАВКА PDF
+# ОТПРАВКА КНИГИ
 
 # ============================================================
 
-def send_book(
-chat_id,
-title
-):
+def send_book(chat_id, title):
 
 ```
 log("")
 log("=" * 70)
 log("ОТПРАВКА КНИГИ")
 log("=" * 70)
+
 log(
     f"Результат теста: {title}"
 )
@@ -570,11 +506,17 @@ book = find_book(title)
 
 if not book:
 
+    log(
+        f"Книга НЕ найдена в базе: "
+        f"{title}"
+    )
+
     send_text(
         chat_id,
         (
             "⚠️ Тест завершён, "
-            "но я не нашёл эту книгу в базе.\n\n"
+            "но я не нашёл эту книгу "
+            "в базе.\n\n"
             f"📕 {title}\n\n"
             "Проверь название книги "
             "в recommendation_database.json."
@@ -601,9 +543,7 @@ author = str(
     )
 ).strip()
 
-filename = get_book_filename(
-    book
-)
+filename = get_book_filename(book)
 
 log(
     f"Книга в базе: {real_title}"
@@ -621,11 +561,13 @@ log(
 # ИЩЕМ PDF
 # --------------------------------------------------------
 
-pdf_path = find_pdf(
-    book
-)
+pdf_path = find_pdf(book)
 
 if not pdf_path:
+
+    log(
+        "PDF НЕ НАЙДЕН"
+    )
 
     send_text(
         chat_id,
@@ -633,11 +575,11 @@ if not pdf_path:
             "🎉 Тест завершён!\n\n"
             f"📕 Твоя книга:\n"
             f"{real_title}\n\n"
-            "Но PDF-файл этой книги "
+            "Но PDF этой книги "
             "не найден на сервере.\n\n"
             f"Искомый файл:\n"
             f"{filename}\n\n"
-            "Проверь, что файл находится "
+            "Проверь, что PDF находится "
             "в папке books."
         )
     )
@@ -664,18 +606,10 @@ caption += (
 )
 
 # --------------------------------------------------------
-# ОТПРАВКА
+# ОТПРАВЛЯЕМ PDF
 # --------------------------------------------------------
 
 try:
-
-    file_size = os.path.getsize(
-        pdf_path
-    )
-
-    log(
-        f"Размер PDF: {file_size} байт"
-    )
 
     with open(
         pdf_path,
@@ -711,27 +645,18 @@ try:
 
     if response.ok:
 
-        result = {}
+        log(
+            "КНИГА УСПЕШНО ОТПРАВЛЕНА"
+        )
 
-        try:
-            result = response.json()
-        except Exception:
-            pass
-
-        if result.get("ok") is True:
-
-            log(
-                f"КНИГА УСПЕШНО ОТПРАВЛЕНА: "
-                f"{real_title}"
-            )
-
-            return True
+        return True
 
     send_text(
         chat_id,
         (
             "⚠️ PDF найден, "
-            "но Telegram не смог его отправить.\n\n"
+            "но Telegram не смог "
+            "его отправить.\n\n"
             f"Ошибка:\n"
             f"{response.text[:1000]}"
         )
@@ -779,10 +704,6 @@ try:
 
 except Exception as e:
 
-    log(
-        f"Ошибка index.html: {e}"
-    )
-
     return (
         "Ошибка загрузки index.html: "
         + str(e)
@@ -804,7 +725,7 @@ return "OK"
 
 # ============================================================
 
-# ПРОВЕРКА ДОСТУПА
+# CHECK ACCESS
 
 # ============================================================
 
@@ -823,18 +744,8 @@ if not user_id:
         "paid": False
     }
 
-paid = is_paid(
-    user_id
-)
-
-log(
-    f"CHECK ACCESS: "
-    f"user_id={user_id}, "
-    f"paid={paid}"
-)
-
 return {
-    "paid": paid
+    "paid": is_paid(user_id)
 }
 ```
 
@@ -856,8 +767,9 @@ user_id = request.args.get(
 if not user_id:
 
     return (
-        "Для теста открой:\n"
-        "/testpay?user_id=ТВОЙ_TELEGRAM_ID"
+        "OK\n\n"
+        "Используй:\n"
+        "/testpay?user_id=ТВОЙ_ID"
     )
 
 add_paid_user(
@@ -865,7 +777,8 @@ add_paid_user(
 )
 
 return (
-    "OK. Доступ выдан.\n"
+    "OK\n\n"
+    "Доступ выдан.\n"
     f"user_id={user_id}"
 )
 ```
@@ -900,7 +813,7 @@ log(
 )
 
 # ========================================================
-# PRE-CHECKOUT
+# PRE CHECKOUT
 # ========================================================
 
 pre_checkout = update.get(
@@ -923,7 +836,6 @@ if pre_checkout:
         {
             "pre_checkout_query_id":
                 pre_checkout_id,
-
             "ok":
                 True
         }
@@ -966,22 +878,17 @@ if callback:
     )
 
     log(
-        f"CALLBACK: {callback_data}"
+        f"CALLBACK: "
+        f"{callback_data}"
     )
 
-    # ----------------------------------------------------
-    # ОТВЕТ TELEGRAM НА CALLBACK
-    # ----------------------------------------------------
-
-    if callback_id:
-
-        tg(
-            "answerCallbackQuery",
-            {
-                "callback_query_id":
-                    callback_id
-            }
-        )
+    tg(
+        "answerCallbackQuery",
+        {
+            "callback_query_id":
+                callback_id
+        }
+    )
 
     # ----------------------------------------------------
     # ПОКУПКА
@@ -993,7 +900,7 @@ if callback:
 
             return "ok"
 
-        invoice_result = tg(
+        tg(
             "sendInvoice",
             {
                 "chat_id":
@@ -1020,17 +927,11 @@ if callback:
                         {
                             "label":
                                 "Прохождение теста",
-
                             "amount":
                                 PRICE_STARS
                         }
                     ]
             }
-        )
-
-        log(
-            f"Результат sendInvoice: "
-            f"{invoice_result}"
         )
 
     return "ok"
@@ -1077,14 +978,8 @@ successful_payment = message.get(
 if successful_payment:
 
     log(
-        f"ОПЛАТА ПОЛУЧЕНА: {user_id}"
-    )
-
-    log(
-        json.dumps(
-            successful_payment,
-            ensure_ascii=False
-        )[:5000]
+        f"ОПЛАТА ПОЛУЧЕНА: "
+        f"{user_id}"
     )
 
     add_paid_user(
@@ -1096,7 +991,8 @@ if successful_payment:
         (
             "✅ Оплата прошла!\n\n"
             "Тест разблокирован.\n\n"
-            "Нажимай кнопку и проходи тест 👇"
+            "Нажимай кнопку и проходи "
+            "тест 👇"
         ),
         quiz_button()
     )
@@ -1133,25 +1029,24 @@ if web_app_data:
     if not is_paid(user_id):
 
         log(
-            "ПОПЫТКА ПОЛУЧИТЬ КНИГУ БЕЗ ОПЛАТЫ: "
-            f"{user_id}"
+            "ПОЛЬЗОВАТЕЛЬ НЕ ОПЛАЧИВАЛ"
         )
 
         send_text(
             chat_id,
             (
                 "🔒 Тест не оплачен.\n\n"
-                "Сначала приобрети прохождение "
-                f"за {PRICE_STARS} ⭐."
+                "Сначала приобрети "
+                f"прохождение за "
+                f"{PRICE_STARS} ⭐."
             ),
             buy_button()
         )
 
         return "ok"
 
-
     # ----------------------------------------------------
-    # ПОЛУЧАЕМ DATA
+    # DATA
     # ----------------------------------------------------
 
     raw_data = web_app_data.get(
@@ -1162,7 +1057,7 @@ if web_app_data:
     if not raw_data:
 
         log(
-            "WEB APP DATA пустой."
+            "WEB APP DATA ПУСТОЙ"
         )
 
         send_text(
@@ -1172,6 +1067,9 @@ if web_app_data:
 
         return "ok"
 
+    log(
+        f"RAW DATA: {raw_data}"
+    )
 
     # ----------------------------------------------------
     # JSON
@@ -1186,11 +1084,7 @@ if web_app_data:
     except Exception as e:
 
         log(
-            f"Ошибка JSON результата: {e}"
-        )
-
-        log(
-            f"RAW DATA: {raw_data[:5000]}"
+            f"Ошибка JSON: {e}"
         )
 
         send_text(
@@ -1203,22 +1097,16 @@ if web_app_data:
 
         return "ok"
 
-
-    # ----------------------------------------------------
-    # РЕЗУЛЬТАТ
-    # ----------------------------------------------------
-
-    log(
-        "РЕЗУЛЬТАТ ТЕСТА:"
-    )
+    log("")
+    log("РАЗОБРАННЫЙ РЕЗУЛЬТАТ:")
 
     log(
         json.dumps(
             result,
-            ensure_ascii=False
+            ensure_ascii=False,
+            indent=2
         )[:10000]
     )
-
 
     # ----------------------------------------------------
     # ACTION
@@ -1231,7 +1119,8 @@ if web_app_data:
     if action != "quiz_result":
 
         log(
-            f"Неизвестное действие: {action}"
+            f"НЕИЗВЕСТНОЕ ACTION: "
+            f"{action}"
         )
 
         send_text(
@@ -1243,7 +1132,6 @@ if web_app_data:
         )
 
         return "ok"
-
 
     # ----------------------------------------------------
     # КНИГА
@@ -1268,12 +1156,6 @@ if web_app_data:
         ""
     )
 
-    extras = result.get(
-        "extras",
-        []
-    )
-
-
     log(
         f"Типаж: {archetype}"
     )
@@ -1286,32 +1168,38 @@ if web_app_data:
         f"Совпадение: {match}"
     )
 
-    log(
-        f"Дополнительные книги: {extras}"
-    )
-
-
     if not book_title:
 
         send_text(
             chat_id,
             (
-                "⚠️ В результате теста "
-                "не указана книга."
+                "⚠️ В результате "
+                "теста не указана книга."
             )
         )
 
         return "ok"
 
-
     # ----------------------------------------------------
-    # ОТПРАВЛЯЕМ КНИГУ
+    # ОТПРАВКА КНИГИ
     # ----------------------------------------------------
 
-    send_book(
+    success = send_book(
         chat_id,
         book_title
     )
+
+    if success:
+
+        log(
+            "ГОТОВО: книга отправлена."
+        )
+
+    else:
+
+        log(
+            "Книга не отправлена."
+        )
 
     return "ok"
 
@@ -1339,10 +1227,12 @@ if text == "/testpay":
     send_text(
         chat_id,
         (
-            "🧪 ТЕСТОВАЯ ОПЛАТА АКТИВИРОВАНА.\n\n"
+            "🧪 ТЕСТОВАЯ ОПЛАТА "
+            "АКТИВИРОВАНА.\n\n"
             "Твой Telegram ID добавлен "
-            "в список оплативших пользователей.\n\n"
-            "Теперь можешь проходить тест 👇"
+            "в список оплативших.\n\n"
+            "Теперь можешь проходить "
+            "тест 👇"
         ),
         quiz_button()
     )
@@ -1375,7 +1265,8 @@ if text.startswith("/start"):
             (
                 "📚 Book Quiz\n\n"
                 "Пройди тест и узнай, "
-                "какая книга подходит именно тебе.\n\n"
+                "какая книга подходит "
+                "именно тебе.\n\n"
                 f"🔓 Стоимость прохождения — "
                 f"{PRICE_STARS} ⭐"
             ),
@@ -1394,7 +1285,7 @@ return "ok"
 
 # ============================================================
 
-# ЗАПУСК
+# START
 
 # ============================================================
 
