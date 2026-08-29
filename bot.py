@@ -124,8 +124,7 @@ def quiz_keyboard(): return {"keyboard": [[{"text": "🧪 Тестовый за�
 def paid_keyboard(): return {"keyboard": [[{"text": "🎲 Пройти тест", "web_app": {"url": app_url("paid")}}]], "resize_keyboard": True, "is_persistent": True}
 
 def send_start(chat_id):
-    tg("sendMessage", {"chat_id": chat_id, "text": "📚 <b>Book Quiz</b>\n\n12 вопросов → твой типаж → персональная книга.\n\n🧪 Тестовый запуск — бесплатно.\n💳 Реальный тест — 200 ⭐.", "parse_mode": "HTML", "reply_markup": quiz_keyboard()})
-    tg("sendMessage", {"chat_id": chat_id, "text": "💳 Реальный доступ:", "reply_markup": {"inline_keyboard": [[{"text": "⭐ Оплатить 200 Stars", "callback_data": "pay_quiz"}]]}})
+    tg("sendMessage", {"chat_id": chat_id, "text": "📚 <b>Book Quiz</b>\n\n12 вопросов → твой типаж → персональная книга.\n\n💳 Доступ — 200 ⭐.", "parse_mode": "HTML", "reply_markup": {"inline_keyboard": [[{"text": "⭐ Оплатить 200 Stars", "callback_data": "pay_quiz"}]]}})
 
 def send_invoice(chat_id):
     tg("sendInvoice", {"chat_id": chat_id, "title": "Book Quiz", "description": "12 вопросов и персональная книга.", "payload": f"quiz_access:{chat_id}", "currency": "XTR", "prices": [{"label": "Book Quiz", "amount": PRICE_STARS}]})
