@@ -8,7 +8,7 @@ from flask import Flask, jsonify, request, send_from_directory
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("book-quiz")
-APP_VERSION = "2026.08.29-channel-v7"
+APP_VERSION = "2026.08.29-channel-v8"
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "https://book-quiz.onrender.com").strip().rstrip("/")
 WEB_APP_URL = os.getenv("WEB_APP_URL", f"{RENDER_EXTERNAL_URL}/").strip()
@@ -144,12 +144,7 @@ def index():return send_from_directory(".","index.html")
 def health():
     try:webhook_info=tg("getWebhookInfo").get("result",{})
     except Exception as exc:webhook_info={"error":str(exc)}
-    allowed=webhook_info.get("allowed_updates") or []
-    repaired=False
-    if webhook_info.get("url")==WEBHOOK_URL and not set(ALLOWED_UPDATES).issubset(set(allowed)):
-        try:setup_webhook();repaired=True;webhook_info=tg("getWebhookInfo").get("result",{})
-        except Exception as exc:log.exception("Automatic webhook repair failed: %s",exc)
-    return jsonify({"ok":True,"version":APP_VERSION,"service":"book-quiz-bot","test_mode":TEST_MODE,"webhook_url":WEBHOOK_URL,"webhook_info":webhook_info,"webhook_repaired":repaired,"expected_allowed_updates":ALLOWED_UPDATES,"web_app_url":WEB_APP_URL,"telegram_book_count":len(load_books()),"books_db":str(BOOKS_DB_PATH),"books_db_exists":BOOKS_DB_PATH.exists()})
+    return jsonify({"ok":True,"version":APP_VERSION,"service":"book-quiz-bot","test_mode":TEST_MODE,"webhook_url":WEBHOOK_URL,"webhook_info":webhook_info,"expected_allowed_updates":ALLOWED_UPDATES,"web_app_url":WEB_APP_URL,"telegram_book_count":len(load_books()),"books_db":str(BOOKS_DB_PATH),"books_db_exists":BOOKS_DB_PATH.exists()})
 @app.get("/check-access")
 def check_access():
     user_id=request.args.get("user_id","").strip();return jsonify({"ok":True,"paid":TEST_MODE or (bool(user_id) and is_paid(user_id)),"test_mode":TEST_MODE})
@@ -162,5 +157,6 @@ def telegram_webhook():
 def setup_webhook():
     try:tg("deleteWebhook",{"drop_pending_updates":False})
     except Exception:log.exception("deleteWebhook failed")
-    result=tg("setWebhook",{"url":WEBHOOK_URL,"drop_pending_updates":False,"allowed_updates":ALLOWED_UPDATES});log.info("Webhook configured: %s",result);return result
+    payload={"url":WEBHOOK_URL,"drop_pending_updates":False,"allowed_updates":json.dumps(ALLOWED_UPDATES,separators=(",",":"))}
+    result=tg("setWebhook",payload);log.info("Webhook configured with allowed_updates=%s: %s",ALLOWED_UPDATES,result);return result
 if __name__=="__main__":os.execvp("gunicorn",["gunicorn","--workers","1","--bind",f"0.0.0.0:{os.getenv('PORT','10000')}","wsgi:app"])
