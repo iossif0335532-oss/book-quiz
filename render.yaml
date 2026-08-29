@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: book-quiz
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --workers 1 --bind 0.0.0.0:$PORT wsgi:app
+    healthCheckPath: /health
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: RENDER_EXTERNAL_URL
+        value: https://book-quiz.onrender.com
+      - key: WEB_APP_URL
+        value: https://book-quiz.onrender.com/
+      - key: TEST_MODE
+        value: "false"
