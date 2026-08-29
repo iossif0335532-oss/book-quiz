@@ -8,18 +8,21 @@ from flask import Flask, jsonify, request, send_from_directory
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("book-quiz")
+
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "https://book-quiz.onrender.com").strip().rstrip("/")
 WEB_APP_URL = os.getenv("WEB_APP_URL", f"{RENDER_EXTERNAL_URL}/").strip()
 TEST_MODE = os.getenv("TEST_MODE", "false").strip().lower() in {"1", "true", "yes", "on"}
 PRICE_STARS = 200
-BOOKS_DIR = Path(os.getenv("BOOKS_DIR", "books"))
 DB_PATH = Path(os.getenv("DB_PATH", "quiz_users.json"))
 BOOKS_DB_PATH = Path(os.getenv("BOOKS_DB_PATH", "telegram_books.json"))
+BOOKS_DIR = Path(os.getenv("BOOKS_DIR", "books"))
 API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 WEBHOOK_URL = f"{RENDER_EXTERNAL_URL}/telegram-webhook"
+
 if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN is not set")
+
 app = Flask(__name__)
 
 
@@ -51,21 +54,25 @@ def load_users():
     return load_json(DB_PATH, {})
 
 
-def save_users(users):
-    save_json(DB_PATH, users)
-
-
 def load_books():
     return load_json(BOOKS_DB_PATH, {})
 
 
-def save_books(books):
-    save_json(BOOKS_DB_PATH, books)
+def save_users(data):
+    save_json(DB_PATH, data)
+
+
+def save_books(data):
+    save_json(BOOKS_DB_PATH, data)
 
 
 def set_paid(user_id, value=True):
-    users = load_users(); key = str(user_id); item = users.get(key, {})
-    item["paid"] = bool(value); users[key] = item; save_users(users)
+    users = load_users()
+    key = str(user_id)
+    item = users.get(key, {})
+    item["paid"] = bool(value)
+    users[key] = item
+    save_users(users)
 
 
 def is_paid(user_id):
@@ -73,9 +80,87 @@ def is_paid(user_id):
 
 
 def save_result(user, result):
-    users = load_users(); key = str(user["id"]); item = users.get(key, {})
+    users = load_users()
+    key = str(user["id"])
+    item = users.get(key, {})
     item.update({"username": user.get("username", ""), "first_name": user.get("first_name", ""), "result": result})
-    users[key] = item; save_users(users)
+    users[key] = item
+    save_users(users)
+
+
+def normalize(text):
+    value = str(text or "").lower()
+    for ch in '.,!?;:()[]{}"\'–—-_/\\':
+        value = value.replace(ch, " ")
+    return " ".join(value.split())
+
+
+def book_key(title):
+    return normalize(Path(str(title or "")).stem)
+
+
+def register_book(message):
+    document = message.get("document") or {}
+    file_id = document.get("file_id")
+    file_name = document.get("file_name") or "book.pdf"
+    mime = document.get("mime_type", "")
+    if not file_id or (mime and mime != "application/pdf" and not file_name.lower().endswith(".pdf")):
+        return False
+    title = Path(file_name).stem.strip()
+    if not title:
+        return False
+    books = load_books()
+    books[book_key(title)] = {
+        "title": title,
+        "file_id": file_id,
+        "file_name": file_name,
+        "updated_at": message.get("date"),
+        "source_chat_id": message.get("chat", {}).get("id"),
+        "source_message_id": message.get("message_id"),
+    }
+    save_books(books)
+    return True
+
+
+def find_telegram_book(title):
+    books = load_books()
+    wanted = book_key(title)
+    if not wanted:
+        return None
+    if wanted in books:
+        return books[wanted]
+    words = [w for w in wanted.split() if len(w) >= 3]
+    best = None
+    best_score = 0
+    for key, item in books.items():
+        score = sum(1 for word in words if word in key)
+        if score > best_score:
+            best, best_score = item, score
+    return best if best and best_score >= max(1, len(words) // 2) else None
+
+
+def find_local_book(title):
+    if not BOOKS_DIR.exists():
+        return None
+    wanted = book_key(title)
+    for pdf in BOOKS_DIR.rglob("*.pdf"):
+        if book_key(pdf.stem) == wanted:
+            return pdf
+    return None
+
+
+def send_book(chat_id, title):
+    item = find_telegram_book(title)
+    if item:
+        tg("sendDocument", {"chat_id": str(chat_id), "document": item["file_id"], "caption": f"📕 Твоя книга — «{item['title']}»"})
+        return True
+    pdf = find_local_book(title)
+    if pdf:
+        with pdf.open("rb") as fh:
+            tg("sendDocument", {"chat_id": str(chat_id), "caption": f"📕 Твоя книга — «{title}»"}, {"document": (pdf.name, fh, "application/pdf")})
+        return True
+    tg("sendMessage", {"chat_id": chat_id, "text": f"📕 Рекомендована книга: <b>{title}</b>\n\nPDF пока не найден в каталоге Telegram. Публикация этой книги в подключённом канале автоматически добавит её в каталог.", "parse_mode": "HTML"})
+    return False
 
 
 def web_app_keyboard():
@@ -87,9 +172,12 @@ def payment_keyboard():
 
 
 def send_start(chat_id):
-    text = ("📚 <b>Какая книга тебя ждёт?</b>\n\n12 вопросов → твой типаж → персональная рекомендация.\n\n" +
-            ("🧪 <b>ТЕСТОВЫЙ РЕЖИМ</b>\nОплата отключена. Доступ открыт.\n\n" if TEST_MODE else f"Стоимость — <b>{PRICE_STARS} ⭐</b>.\nСначала оплати прохождение.\n\n") +
-            "После теста результат автоматически придёт сюда вместе с книгой.")
+    text = "📚 <b>Какая книга тебя ждёт?</b>\n\n12 вопросов → твой типаж → персональная рекомендация.\n\n"
+    if TEST_MODE:
+        text += "🧪 <b>ТЕСТОВЫЙ РЕЖИМ</b>\nОплата отключена. Доступ открыт.\n\n"
+    else:
+        text += f"Стоимость — <b>{PRICE_STARS} ⭐</b>.\nСначала оплати прохождение.\n\n"
+    text += "После теста результат автоматически придёт сюда вместе с книгой."
     tg("sendMessage", {"chat_id": chat_id, "text": text, "parse_mode": "HTML", "reply_markup": web_app_keyboard()})
     if not TEST_MODE:
         tg("sendMessage", {"chat_id": chat_id, "text": "Нажми кнопку ниже для оплаты:", "reply_markup": payment_keyboard()})
@@ -103,96 +191,19 @@ def send_invoice(chat_id):
     tg("sendInvoice", {"chat_id": chat_id, "title": "Прохождение теста", "description": "12 вопросов и персональная рекомендация книги.", "payload": f"quiz_access:{chat_id}", "currency": "XTR", "prices": [{"label": "Прохождение теста", "amount": PRICE_STARS}]})
 
 
-def normalize(text):
-    chars = '.,!?;:()[]{}"\'–—-_/\\'
-    value = str(text or "").lower()
-    for ch in chars:
-        value = value.replace(ch, " ")
-    return " ".join(value.split())
-
-
-def book_key(title):
-    return normalize(Path(str(title or "")).stem)
-
-
-def register_telegram_book(message):
-    document = message.get("document") or {}
-    file_id = document.get("file_id")
-    file_name = document.get("file_name") or "book.pdf"
-    mime = document.get("mime_type", "")
-    if not file_id or (mime and mime != "application/pdf" and not file_name.lower().endswith(".pdf")):
-        return False
-    title = Path(file_name).stem.strip()
-    books = load_books()
-    books[book_key(title)] = {"title": title, "file_id": file_id, "file_name": file_name, "updated_at": message.get("date")}
-    save_books(books)
-    return True
-
-
-def find_telegram_book(title):
-    books = load_books(); wanted = book_key(title)
-    if not wanted:
-        return None
-    if wanted in books:
-        return books[wanted]
-    words = [w for w in wanted.split() if len(w) >= 3]
-    best = None; best_score = 0
-    for key, item in books.items():
-        score = sum(1 for word in words if word in key)
-        if score > best_score:
-            best, best_score = item, score
-    return best if best and best_score >= max(1, len(words) // 2) else None
-
-
-def find_local_book(title):
-    if not BOOKS_DIR.exists():
-        return None
-    wanted = book_key(title); pdfs = list(BOOKS_DIR.rglob("*.pdf"))
-    for pdf in pdfs:
-        if book_key(pdf.stem) == wanted:
-            return pdf
-    for pdf in pdfs:
-        if wanted and wanted in book_key(pdf.stem):
-            return pdf
-    words = [w for w in wanted.split() if len(w) >= 3]; best = None; best_score = 0
-    for pdf in pdfs:
-        score = sum(1 for word in words if word in book_key(pdf.stem))
-        if score > best_score:
-            best, best_score = pdf, score
-    return best if best and best_score >= max(1, len(words) // 2) else None
-
-
-def send_book(chat_id, title):
-    telegram_book = find_telegram_book(title)
-    if telegram_book:
-        tg("sendDocument", {"chat_id": str(chat_id), "document": telegram_book["file_id"], "caption": f"📕 Твоя книга — «{telegram_book['title']}»"})
-        log.info("Book sent by Telegram file_id: %s -> %s", telegram_book["title"], chat_id)
-        return True
-    pdf = find_local_book(title)
-    if pdf:
-        with pdf.open("rb") as fh:
-            tg("sendDocument", {"chat_id": str(chat_id), "caption": f"📕 Твоя книга — «{title}»"}, {"document": (pdf.name, fh, "application/pdf")})
-        return True
-    tg("sendMessage", {"chat_id": chat_id, "text": f"📕 Твоя книга: <b>{title}</b>\n\nРезультат сохранён, но PDF ещё не загружен в каталог бота. Отправь этот PDF в чат боту — он автоматически запомнит его.", "parse_mode": "HTML"})
-    return False
-
-
 def handle_message(message):
-    user = message.get("from") or {}; chat_id = message.get("chat", {}).get("id")
+    user = message.get("from") or {}
+    chat_id = message.get("chat", {}).get("id")
     if not chat_id:
         return
-
     if message.get("document"):
-        if register_telegram_book(message):
-            name = message["document"].get("file_name", "book.pdf")
-            tg("sendMessage", {"chat_id": chat_id, "text": f"✅ Книга сохранена в каталоге бота.\n\n📕 {name}\n\nТеперь после теста я смогу отправить её пользователю без повторной загрузки."})
+        if register_book(message):
+            tg("sendMessage", {"chat_id": chat_id, "text": f"✅ Книга сохранена в каталоге бота: {message['document'].get('file_name', 'book.pdf')}"})
         return
-
     if message.get("successful_payment"):
         set_paid(user.get("id", chat_id), True)
         tg("sendMessage", {"chat_id": chat_id, "text": "✅ <b>Оплата прошла!</b>\n\nДоступ открыт. Нажми «🎲 Пройти тест».", "parse_mode": "HTML", "reply_markup": web_app_keyboard()})
         return
-
     web_app_data = message.get("web_app_data")
     if web_app_data:
         user_id = user.get("id", chat_id)
@@ -208,28 +219,34 @@ def handle_message(message):
             tg("sendMessage", {"chat_id": chat_id, "text": "⚠️ Результат теста имеет неверный формат."})
             return
         save_result(user, result)
-        archetype = result.get("archetype", "Не определён"); book = result["book"]; match = result.get("match")
-        text = f"🎉 <b>Тест завершён!</b>\n\n🧠 Типаж: <b>{archetype}</b>\n📕 Книга: <b>{book}</b>" + (f"\n✨ Совпадение: {match}%" if match is not None else "")
+        archetype = result.get("archetype", "Не определён")
+        book = result["book"]
+        match = result.get("match")
+        text = f"🎉 <b>Тест завершён!</b>\n\n🧠 Типаж: <b>{archetype}</b>\n📕 Книга: <b>{book}</b>"
+        if match is not None:
+            text += f"\n✨ Совпадение: {match}%"
         tg("sendMessage", {"chat_id": chat_id, "text": text, "parse_mode": "HTML"})
         send_book(chat_id, book)
         return
-
     text = (message.get("text") or "").strip()
     if text.startswith("/start") or text.startswith("/help"):
         send_start(chat_id)
     elif text == "/test":
-        if not TEST_MODE:
-            tg("sendMessage", {"chat_id": chat_id, "text": "❌ Тестовый режим отключён."})
+        if TEST_MODE:
+            set_paid(user.get("id", chat_id), True)
+            send_start(chat_id)
         else:
-            set_paid(user.get("id", chat_id), True); send_start(chat_id)
+            tg("sendMessage", {"chat_id": chat_id, "text": "🔒 Сначала оплатите прохождение теста."})
     elif text == "/catalog":
         books = load_books()
-        names = [item.get("title", key) for key, item in books.items()]
-        tg("sendMessage", {"chat_id": chat_id, "text": f"📚 В каталоге Telegram: <b>{len(names)}</b> книг." + ("\n\n" + "\n".join(f"• {name}" for name in names[:100]) if names else ""), "parse_mode": "HTML"})
+        tg("sendMessage", {"chat_id": chat_id, "text": f"📚 В Telegram-каталоге сохранено <b>{len(books)}</b> книг.", "parse_mode": "HTML"})
     elif text == "/book":
         result = load_users().get(str(user.get("id", chat_id)), {}).get("result", {})
         book = result.get("book") if isinstance(result, dict) else None
-        send_book(chat_id, book) if book else tg("sendMessage", {"chat_id": chat_id, "text": "Сначала пройди тест через «🎲 Пройти тест»."})
+        if book:
+            send_book(chat_id, book)
+        else:
+            tg("sendMessage", {"chat_id": chat_id, "text": "Сначала пройди тест через «🎲 Пройти тест»."})
 
 
 def handle_update(update):
@@ -242,6 +259,11 @@ def handle_update(update):
         if callback.get("data") == "pay_quiz":
             tg("answerCallbackQuery", {"callback_query_id": callback["id"]})
             send_invoice(callback.get("message", {}).get("chat", {}).get("id"))
+        return
+    channel_post = update.get("channel_post")
+    if channel_post:
+        if register_book(channel_post):
+            log.info("Indexed channel PDF: %s", channel_post.get("document", {}).get("file_name"))
         return
     message = update.get("message")
     if message:
@@ -259,7 +281,7 @@ def health():
         webhook_info = tg("getWebhookInfo").get("result", {})
     except Exception as exc:
         webhook_info = {"error": str(exc)}
-    return jsonify({"ok": True, "service": "book-quiz-bot", "test_mode": TEST_MODE, "webhook_url": WEBHOOK_URL, "webhook_info": webhook_info, "web_app_url": WEB_APP_URL, "telegram_book_count": len(load_books()), "local_pdf_count": len(list(BOOKS_DIR.rglob("*.pdf"))) if BOOKS_DIR.exists() else 0})
+    return jsonify({"ok": True, "service": "book-quiz-bot", "test_mode": TEST_MODE, "webhook_url": WEBHOOK_URL, "webhook_info": webhook_info, "web_app_url": WEB_APP_URL, "telegram_book_count": len(load_books())})
 
 
 @app.get("/check-access")
@@ -279,9 +301,8 @@ def telegram_webhook():
 
 
 def setup_webhook():
-    result = tg("setWebhook", {"url": WEBHOOK_URL, "drop_pending_updates": False, "allowed_updates": ["message", "callback_query", "pre_checkout_query"]})
+    result = tg("setWebhook", {"url": WEBHOOK_URL, "drop_pending_updates": False, "allowed_updates": ["message", "channel_post", "callback_query", "pre_checkout_query"]})
     log.info("Webhook set: %s", result)
-    log.info("Webhook info: %s", tg("getWebhookInfo"))
     return result
 
 
