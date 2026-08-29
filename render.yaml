@@ -15,10 +15,12 @@ services:
       - key: RENDER_EXTERNAL_URL
         value: https://book-quiz.onrender.com
       - key: WEB_APP_URL
-        value: https://iossif0335532-oss.github.io/book-quiz/
+        value: https://book-quiz.onrender.com/app
       - key: DB_PATH
         value: /var/data/quiz_users.json
       - key: BOOKS_DB_PATH
         value: /var/data/telegram_books.json
-      - key: TEST_MODE
-        value: "true"
+      - key: EVENTS_PATH
+        value: /var/data/telegram_events.json
+      - key: RECOMMENDATION_DB
+        value: recommendation_database.json
