@@ -5,6 +5,10 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn --workers 1 --bind 0.0.0.0:$PORT wsgi:app
     healthCheckPath: /health
+    disk:
+      name: book-quiz-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: BOT_TOKEN
         sync: false
@@ -12,5 +16,9 @@ services:
         value: https://book-quiz.onrender.com
       - key: WEB_APP_URL
         value: https://book-quiz.onrender.com/
+      - key: DB_PATH
+        value: /var/data/quiz_users.json
+      - key: BOOKS_DB_PATH
+        value: /var/data/telegram_books.json
       - key: TEST_MODE
         value: "false"
