@@ -6,30 +6,29 @@
 <title>Book Quiz</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#141033;color:#f6f2e8;font-family:system-ui,-apple-system,sans-serif;padding:20px}.wrap{max-width:620px;margin:auto}.hidden{display:none!important}.k{color:#f6c544;text-align:center;font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}.center{text-align:center}h1{font-size:38px;line-height:1.05}.sub,.muted{color:#c7c0f5}.btn,.opt{width:100%;padding:17px;border-radius:16px;font-size:17px;font-weight:800}.btn{border:0;background:#f6c544;color:#141033}.opts{display:grid;gap:10px}.opt{text-align:left;background:#1f1854;color:#f6f2e8;border:1px solid #3a3080}.progress{text-align:center;color:#f6c544;font-weight:800;margin:15px}.q{text-align:center;font-size:25px}.result{background:#1f1854;border:1px solid #3a3080;border-radius:22px;padding:24px}.book{font-size:25px;font-weight:900}.ok{color:#4ad6b0;font-weight:800}.error{color:#ff6b6b}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#141033;color:#f6f2e8;font-family:system-ui,-apple-system,sans-serif;padding:20px}.wrap{max-width:620px;margin:auto}.hidden{display:none!important}.k{color:#f6c544;text-align:center;font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}.center{text-align:center}h1{font-size:38px;line-height:1.05}.sub,.muted{color:#c7c0f5}.btn,.opt{width:100%;padding:17px;border-radius:16px;font-size:17px;font-weight:800}.btn{border:0;background:#f6c544;color:#141033}.opts{display:grid;gap:10px}.opt{text-align:left;background:#1f1854;color:#f6f2e8;border:1px solid #3a3080}.progress{text-align:center;color:#f6c544;font-weight:800;margin:15px}.q{text-align:center;font-size:25px}.result{background:#1f1854;border:1px solid #3a3080;border-radius:22px;padding:24px}.ok{color:#4ad6b0;font-weight:800}.error{color:#ff6b6b}
 </style>
 </head>
 <body><main class="wrap">
 <section id="locked"><div class="center"><div style="font-size:64px">🔒</div><div class="k">Book Quiz</div><h2>Проверяем доступ</h2><p id="lockmsg" class="muted">Открой тест кнопкой из бота.</p></div></section>
 <section id="intro" class="hidden center"><div class="k">Библиотерапевт</div><h1>Какая книга тебя ждёт?</h1><p class="sub">12 вопросов → твой типаж → персональная книга.</p><button class="btn" id="start">Погнали 🎲</button></section>
 <section id="quiz" class="hidden"><div class="progress" id="progress"></div><h2 class="q" id="question"></h2><div class="opts" id="options"></div></section>
-<section id="result" class="hidden"><div class="result center"><div class="k">Твой результат</div><h2 id="type"></h2><p id="description" class="muted"></p><p class="book" id="book"></p><p id="status" class="ok"></p><p id="error" class="error"></p></div></section>
+<section id="result" class="hidden"><div class="result center"><div class="k">Тест завершён</div><h2 id="type"></h2><p id="description" class="muted"></p><p id="status" class="ok"></p><p id="error" class="error"></p></div></section>
 </main>
 <script>
 const tg=window.Telegram?.WebApp||null;if(tg){tg.ready();tg.expand()}
-const API='https://book-quiz.onrender.com';
 const mode=new URLSearchParams(location.search).get('mode');
 const testMode=mode==='test';
 const $=id=>document.getElementById(id);
 const TYPES={
-LAUNCH:['🚀','Запускатор','Ты создаёшь движение и не ждёшь идеального момента.','Сделай. Твой первый шаг'],
-BUILD:['🧱','Архитектор','Ты превращаешь хаос в систему.','Метод тыквы'],
-CHARM:['🎤','Обаятель','Ты умеешь убеждать, общаться и вести людей за собой.','Влияй'],
-MOGUL:['👑','Магнат','Ты думаешь масштабом, цифрами и результатом.','Богатей'],
-WRITE:['✍️','Мастер слова','Твой инструмент — текст, смысл и влияние.','Клад для копирайтера'],
-VISION:['💡','Визионер','Ты замечаешь возможности раньше остальных.','Думай иначе. Креативное мышление'],
-BEAST:['🔥','Берсерк','Меньше сомнений — больше действий.','Unfuck Yourself'],
-BIO:['🧠','Биохакер','Ты строишь результат через энергию и себя.','Биохакинг мозга']};
+LAUNCH:['🚀','Запускатор','Ты создаёшь движение и не ждёшь идеального момента.'],
+BUILD:['🧱','Архитектор','Ты превращаешь хаос в систему.'],
+CHARM:['🎤','Обаятель','Ты умеешь убеждать, общаться и вести людей за собой.'],
+MOGUL:['👑','Магнат','Ты думаешь масштабом, цифрами и результатом.'],
+WRITE:['✍️','Мастер слова','Твой инструмент — текст, смысл и влияние.'],
+VISION:['💡','Визионер','Ты замечаешь возможности раньше остальных.'],
+BEAST:['🔥','Берсерк','Меньше сомнений — больше действий.'],
+BIO:['🧠','Биохакер','Ты строишь результат через энергию и себя.']};
 const Q=[
 ['Пятница, 21:00. Где тебя найти?',[['На встрече с людьми',{CHARM:1,MOGUL:1}],['Дома с планом',{BUILD:2}],['В новом месте',{LAUNCH:1,VISION:1}],['Уже сплю',{BIO:2}]]],
 ['Тебе дали 3 млн ₸. Ты…',[['Вложу в идею',{LAUNCH:2}],['Прокачаю себя',{BIO:1,BUILD:1}],['Устрою движ',{CHARM:1,VISION:1}],['Сделаю десять',{MOGUL:2}]]],
@@ -51,11 +50,10 @@ async function access(){
 if(testMode){openIntro();return}
 if(!tg){$('lockmsg').textContent='Открой Mini App внутри Telegram.';return}
 const id=tg.initDataUnsafe?.user?.id;if(!id){$('lockmsg').textContent='Telegram не передал пользователя.';return}
-try{const r=await fetch(API+'/check-access?user_id='+encodeURIComponent(id));const d=await r.json();if(d.paid)openIntro();else $('lockmsg').textContent='Сначала оплати 200 ⭐ в боте.'}catch(e){$('lockmsg').textContent='Ошибка проверки доступа. Попробуй ещё раз.'}}
+try{const r=await fetch('/check-access?user_id='+encodeURIComponent(id));const d=await r.json();if(d.paid)openIntro();else $('lockmsg').textContent='Сначала оплати 200 ⭐ в боте.'}catch(e){$('lockmsg').textContent='Ошибка проверки доступа.'}}
 function render(){const q=Q[i];$('progress').textContent=`Вопрос ${i+1} из ${Q.length}`;$('question').textContent=q[0];$('options').innerHTML='';q[1].forEach(([text,weights])=>{const b=document.createElement('button');b.className='opt';b.textContent=text;b.onclick=()=>{Object.entries(weights).forEach(([k,v])=>scores[k]+=v);i++;i<Q.length?render():finish()};$('options').appendChild(b)})}
 function start(){reset();$('intro').classList.add('hidden');$('quiz').classList.remove('hidden');render()}
-function finish(){const sorted=Object.entries(scores).sort((a,b)=>b[1]-a[1]);const key=sorted[0][0];const second=sorted[1]?.[1]||0;const top=sorted[0][1];const match=Math.round((top/Math.max(1,top+second))*100);const t=TYPES[key];const result={action:'quiz_result',archetype:t[1],book:t[3],match,score:scores,test_mode:testMode};$('quiz').classList.add('hidden');$('result').classList.remove('hidden');$('type').textContent=t[0]+' '+t[1];$('description').textContent=t[2];$('book').textContent='📕 '+t[3];if(tg&&typeof tg.sendData==='function'){try{tg.sendData(JSON.stringify(result));$('status').textContent='Результат отправлен боту. Книга придёт следующим сообщением.'}catch(e){$('error').textContent='Telegram не принял результат.'}}else $('error').textContent='Этот тест нужно запускать из Telegram.'}
+function finish(){const sorted=Object.entries(scores).sort((a,b)=>b[1]-a[1]);const key=sorted[0][0];const t=TYPES[key];const result={action:'quiz_result',archetype_key:key,archetype:t[1],match:100,test_mode:testMode,score:scores};$('quiz').classList.add('hidden');$('result').classList.remove('hidden');$('type').textContent=t[0]+' '+t[1];$('description').textContent=t[2];if(tg&&typeof tg.sendData==='function'){try{tg.sendData(JSON.stringify(result));$('status').textContent='Результат отправлен боту. Подбираем книгу…'}catch(e){$('error').textContent='Telegram не принял результат.'}}else{$('error').textContent='Запусти тест внутри Telegram.'}}
 $('start').onclick=start;access();
 </script>
-</body>
-</html>
+</body></html>
