@@ -34,21 +34,37 @@ jobs:
           assert "action:'quiz_result'" in html
           assert 'archetype_key' in html
           assert 'mode' in html
+          assert html.count("['") >= 12
 
           import bot
-          sample = {
-              'document': {
-                  'file_id': 'TEST_FILE_ID',
-                  'file_name': '1984.pdf',
-                  'mime_type': 'application/pdf'
-              },
-              'chat': {'id': -100123, 'title': 'Test Channel'},
-              'message_id': 1,
-              'date': 1
+          calls = []
+          bot.tg = lambda method, payload=None: calls.append((method, payload)) or {'ok': True, 'result': True}
+
+          channel_update = {
+              'update_id': 1,
+              'channel_post': {
+                  'chat': {'id': -100123, 'title': 'Test Channel'},
+                  'message_id': 1,
+                  'date': 1,
+                  'document': {'file_id': 'TEST_FILE_ID', 'file_name': '1984.pdf', 'mime_type': 'application/pdf'}
+              }
           }
-          assert bot.register_book(sample) is True
+          bot.handle_update(channel_update)
           assert len(bot.books()) == 1
-          item = bot.choose_book('', 'Визионер')
-          assert item and item['file_id'] == 'TEST_FILE_ID'
-          print('Book Quiz smoke checks passed')
+          assert bot.books()['1984']['file_id'] == 'TEST_FILE_ID'
+
+          bot.grant_test(777)
+          web_update = {
+              'update_id': 2,
+              'message': {
+                  'from': {'id': 777, 'username': 'test'},
+                  'chat': {'id': 777},
+                  'web_app_data': {'data': json.dumps({'action': 'quiz_result', 'archetype_key': 'VISION', 'archetype': 'Визионер'})}
+              }
+          }
+          bot.handle_update(web_update)
+          methods = [method for method, _ in calls]
+          assert 'sendMessage' in methods
+          assert 'sendDocument' in methods
+          print('Book Quiz end-to-end smoke checks passed')
           PY
