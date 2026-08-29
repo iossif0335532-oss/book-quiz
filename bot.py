@@ -8,7 +8,7 @@ from flask import Flask, jsonify, request, send_from_directory
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("book-quiz")
-APP_VERSION = "2026.08.29-channel-v4"
+APP_VERSION = "2026.08.29-channel-v5"
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "https://book-quiz.onrender.com").strip().rstrip("/")
 WEB_APP_URL = os.getenv("WEB_APP_URL", f"{RENDER_EXTERNAL_URL}/").strip()
@@ -152,8 +152,12 @@ def telegram_webhook():
     except Exception:log.exception("Webhook update failed")
     return jsonify({"ok":True})
 def setup_webhook():
-    result=tg("setWebhook",{"url":WEBHOOK_URL,"drop_pending_updates":False,"allowed_updates":["message","channel_post","callback_query","pre_checkout_query"]});log.info("Webhook set: %s",result);return result
+    # Re-register from scratch so an old webhook with a stale allowed_updates
+    # list cannot silently exclude channel_post updates.
+    try: tg("deleteWebhook", {"drop_pending_updates": False})
+    except Exception: log.exception("deleteWebhook failed")
+    result=tg("setWebhook",{"url":WEBHOOK_URL,"drop_pending_updates":False,"allowed_updates":["message","channel_post","callback_query","pre_checkout_query"]})
+    log.info("Webhook configured: %s",result)
+    return result
 if __name__=="__main__":
-    # If Render still has an old Start Command such as `python bot.py`,
-    # transparently hand off to Gunicorn instead of starting Flask's dev server.
-    os.execvp("gunicorn", ["gunicorn", "--workers", "1", "--bind", f"0.0.0.0:{os.getenv('PORT','10000')}", "wsgi:app"])
+    os.execvp("gunicorn",["gunicorn","--workers","1","--bind",f"0.0.0.0:{os.getenv('PORT','10000')}","wsgi:app"])
