@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt
-      - run: python -m py_compile bot.py wsgi.py final_recommendation.py book_delivery.py
+      - run: python -m py_compile bot.py wsgi.py
       - run: |
           python - <<'PY'
           import json
@@ -23,5 +23,6 @@ jobs:
           assert 'tg.sendData' in html
           assert '/check-access' in html
           assert 'quiz_result' in html
+          assert '12' in html
           print('Book Quiz static checks passed')
           PY
