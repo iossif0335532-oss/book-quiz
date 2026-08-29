@@ -8,7 +8,7 @@ from flask import Flask, jsonify, request, send_from_directory
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("book-quiz")
-APP_VERSION = "2026.08.29-channel-v5"
+APP_VERSION = "2026.08.29-channel-v6"
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "https://book-quiz.onrender.com").strip().rstrip("/")
 WEB_APP_URL = os.getenv("WEB_APP_URL", f"{RENDER_EXTERNAL_URL}/").strip()
@@ -19,6 +19,7 @@ BOOKS_DB_PATH = Path(os.getenv("BOOKS_DB_PATH", "/var/data/telegram_books.json")
 BOOKS_DIR = Path(os.getenv("BOOKS_DIR", "books"))
 API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 WEBHOOK_URL = f"{RENDER_EXTERNAL_URL}/telegram-webhook"
+ALLOWED_UPDATES = ["message", "channel_post", "callback_query", "pre_checkout_query"]
 if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN is not set")
 app = Flask(__name__)
@@ -124,6 +125,7 @@ def handle_message(message):
         result=load_users().get(str(user.get("id",chat_id)),{}).get("result",{});book=result.get("book") if isinstance(result,dict) else None
         send_book(chat_id,book) if book else tg("sendMessage",{"chat_id":chat_id,"text":"Сначала пройди тест через «🎲 Пройти тест»."})
 def handle_update(update):
+    log.info("Received Telegram update keys: %s", sorted(update.keys()))
     pre=update.get("pre_checkout_query")
     if pre:tg("answerPreCheckoutQuery",{"pre_checkout_query_id":pre["id"],"ok":pre.get("invoice_payload","").startswith("quiz_access:")});return
     callback=update.get("callback_query")
@@ -132,7 +134,9 @@ def handle_update(update):
         return
     channel_post=update.get("channel_post")
     if channel_post:
-        register_book(channel_post);return
+        log.info("Received channel_post: chat_id=%s message_id=%s has_document=%s",channel_post.get("chat",{}).get("id"),channel_post.get("message_id"),bool(channel_post.get("document")))
+        if register_book(channel_post): log.info("Channel PDF indexed successfully")
+        return
     message=update.get("message")
     if message:handle_message(message)
 @app.get("/")
@@ -141,7 +145,15 @@ def index():return send_from_directory(".","index.html")
 def health():
     try:webhook_info=tg("getWebhookInfo").get("result",{})
     except Exception as exc:webhook_info={"error":str(exc)}
-    return jsonify({"ok":True,"version":APP_VERSION,"service":"book-quiz-bot","test_mode":TEST_MODE,"webhook_url":WEBHOOK_URL,"webhook_info":webhook_info,"web_app_url":WEB_APP_URL,"telegram_book_count":len(load_books()),"books_db":str(BOOKS_DB_PATH),"books_db_exists":BOOKS_DB_PATH.exists()})
+    allowed=webhook_info.get("allowed_updates") or []
+    repaired=False
+    if webhook_info.get("url")==WEBHOOK_URL and "channel_post" not in allowed:
+        try:
+            setup_webhook(); repaired=True
+            webhook_info=tg("getWebhookInfo").get("result",{})
+        except Exception as exc:
+            log.exception("Automatic webhook repair failed: %s",exc)
+    return jsonify({"ok":True,"version":APP_VERSION,"service":"book-quiz-bot","test_mode":TEST_MODE,"webhook_url":WEBHOOK_URL,"webhook_info":webhook_info,"webhook_repaired":repaired,"expected_allowed_updates":ALLOWED_UPDATES,"web_app_url":WEB_APP_URL,"telegram_book_count":len(load_books()),"books_db":str(BOOKS_DB_PATH),"books_db_exists":BOOKS_DB_PATH.exists()})
 @app.get("/check-access")
 def check_access():
     user_id=request.args.get("user_id","").strip();return jsonify({"ok":True,"paid":TEST_MODE or (bool(user_id) and is_paid(user_id)),"test_mode":TEST_MODE})
@@ -152,12 +164,9 @@ def telegram_webhook():
     except Exception:log.exception("Webhook update failed")
     return jsonify({"ok":True})
 def setup_webhook():
-    # Re-register from scratch so an old webhook with a stale allowed_updates
-    # list cannot silently exclude channel_post updates.
-    try: tg("deleteWebhook", {"drop_pending_updates": False})
-    except Exception: log.exception("deleteWebhook failed")
-    result=tg("setWebhook",{"url":WEBHOOK_URL,"drop_pending_updates":False,"allowed_updates":["message","channel_post","callback_query","pre_checkout_query"]})
+    try:tg("deleteWebhook",{"drop_pending_updates":False})
+    except Exception:log.exception("deleteWebhook failed")
+    result=tg("setWebhook",{"url":WEBHOOK_URL,"drop_pending_updates":False,"allowed_updates":ALLOWED_UPDATES})
     log.info("Webhook configured: %s",result)
     return result
-if __name__=="__main__":
-    os.execvp("gunicorn",["gunicorn","--workers","1","--bind",f"0.0.0.0:{os.getenv('PORT','10000')}","wsgi:app"])
+if __name__=="__main__":os.execvp("gunicorn",["gunicorn","--workers","1","--bind",f"0.0.0.0:{os.getenv('PORT','10000')}","wsgi:app"])
