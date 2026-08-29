@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  syntax:
+  syntax-and-smoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,14 +15,40 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m py_compile bot.py wsgi.py
       - run: |
+          BOT_TOKEN=test \
+          DB_PATH=/tmp/quiz_users.json \
+          BOOKS_DB_PATH=/tmp/telegram_books.json \
+          EVENTS_PATH=/tmp/telegram_events.json \
           python - <<'PY'
           import json
           from pathlib import Path
-          json.loads(Path('recommendation_database.json').read_text(encoding='utf-8'))
+
+          db = json.loads(Path('recommendation_database.json').read_text(encoding='utf-8'))
+          assert isinstance(db.get('books'), list)
+          assert len(db['books']) == db.get('total_books') == 432
+          assert all(x.get('title') and x.get('filename') for x in db['books'])
+          assert len({x['book_id'] for x in db['books']}) == 432
+
           html = Path('index.html').read_text(encoding='utf-8')
           assert 'tg.sendData' in html
-          assert '/check-access' in html
-          assert 'quiz_result' in html
-          assert '12' in html
-          print('Book Quiz static checks passed')
+          assert "action:'quiz_result'" in html
+          assert 'archetype_key' in html
+          assert 'mode' in html
+
+          import bot
+          sample = {
+              'document': {
+                  'file_id': 'TEST_FILE_ID',
+                  'file_name': '1984.pdf',
+                  'mime_type': 'application/pdf'
+              },
+              'chat': {'id': -100123, 'title': 'Test Channel'},
+              'message_id': 1,
+              'date': 1
+          }
+          assert bot.register_book(sample) is True
+          assert len(bot.books()) == 1
+          item = bot.choose_book('', 'Визионер')
+          assert item and item['file_id'] == 'TEST_FILE_ID'
+          print('Book Quiz smoke checks passed')
           PY
