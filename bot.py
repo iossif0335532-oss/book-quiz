@@ -8,7 +8,7 @@ from flask import Flask, jsonify, request, send_from_directory
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("book-quiz")
-APP_VERSION = "2026.08.29-channel-v6"
+APP_VERSION = "2026.08.29-channel-v7"
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "https://book-quiz.onrender.com").strip().rstrip("/")
 WEB_APP_URL = os.getenv("WEB_APP_URL", f"{RENDER_EXTERNAL_URL}/").strip()
@@ -28,8 +28,7 @@ def tg(method, payload=None, files=None):
     response = requests.post(f"{API}/{method}", data=payload or {}, files=files, timeout=120)
     response.raise_for_status()
     data = response.json()
-    if not data.get("ok"):
-        raise RuntimeError(data)
+    if not data.get("ok"): raise RuntimeError(data)
     return data
 
 def load_json(path, default):
@@ -135,7 +134,7 @@ def handle_update(update):
     channel_post=update.get("channel_post")
     if channel_post:
         log.info("Received channel_post: chat_id=%s message_id=%s has_document=%s",channel_post.get("chat",{}).get("id"),channel_post.get("message_id"),bool(channel_post.get("document")))
-        if register_book(channel_post): log.info("Channel PDF indexed successfully")
+        if register_book(channel_post):log.info("Channel PDF indexed successfully")
         return
     message=update.get("message")
     if message:handle_message(message)
@@ -147,12 +146,9 @@ def health():
     except Exception as exc:webhook_info={"error":str(exc)}
     allowed=webhook_info.get("allowed_updates") or []
     repaired=False
-    if webhook_info.get("url")==WEBHOOK_URL and "channel_post" not in allowed:
-        try:
-            setup_webhook(); repaired=True
-            webhook_info=tg("getWebhookInfo").get("result",{})
-        except Exception as exc:
-            log.exception("Automatic webhook repair failed: %s",exc)
+    if webhook_info.get("url")==WEBHOOK_URL and not set(ALLOWED_UPDATES).issubset(set(allowed)):
+        try:setup_webhook();repaired=True;webhook_info=tg("getWebhookInfo").get("result",{})
+        except Exception as exc:log.exception("Automatic webhook repair failed: %s",exc)
     return jsonify({"ok":True,"version":APP_VERSION,"service":"book-quiz-bot","test_mode":TEST_MODE,"webhook_url":WEBHOOK_URL,"webhook_info":webhook_info,"webhook_repaired":repaired,"expected_allowed_updates":ALLOWED_UPDATES,"web_app_url":WEB_APP_URL,"telegram_book_count":len(load_books()),"books_db":str(BOOKS_DB_PATH),"books_db_exists":BOOKS_DB_PATH.exists()})
 @app.get("/check-access")
 def check_access():
@@ -166,7 +162,5 @@ def telegram_webhook():
 def setup_webhook():
     try:tg("deleteWebhook",{"drop_pending_updates":False})
     except Exception:log.exception("deleteWebhook failed")
-    result=tg("setWebhook",{"url":WEBHOOK_URL,"drop_pending_updates":False,"allowed_updates":ALLOWED_UPDATES})
-    log.info("Webhook configured: %s",result)
-    return result
+    result=tg("setWebhook",{"url":WEBHOOK_URL,"drop_pending_updates":False,"allowed_updates":ALLOWED_UPDATES});log.info("Webhook configured: %s",result);return result
 if __name__=="__main__":os.execvp("gunicorn",["gunicorn","--workers","1","--bind",f"0.0.0.0:{os.getenv('PORT','10000')}","wsgi:app"])
