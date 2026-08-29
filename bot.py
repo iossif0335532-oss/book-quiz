@@ -69,7 +69,7 @@ def normalize(text):
     return " ".join(value.split())
 
 def title_key(text): return normalize(Path(str(text or "")).stem)
-def strip_prefix(text): return re.sub(r"^\s*\d+\s*[-_.:)]*\s*", "", str(text or "")).strip()
+def strip_prefix(text): return re.sub(r"^\s*\d+\s*[-_.:)]+\s*", "", str(text or "")).strip()
 
 def record_event(kind, update):
     data = events(); data.update({"last_update_type": kind, "last_update_id": update.get("update_id"), "last_update_at": time.time()})
