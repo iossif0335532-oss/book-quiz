@@ -8,7 +8,7 @@ from flask import Flask, jsonify, request, send_from_directory
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("book-quiz")
-APP_VERSION = "2026.08.29-channel-v8"
+APP_VERSION = "2026.08.29-channel-v9"
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "https://book-quiz.onrender.com").strip().rstrip("/")
 WEB_APP_URL = os.getenv("WEB_APP_URL", f"{RENDER_EXTERNAL_URL}/").strip()
@@ -25,7 +25,10 @@ if not BOT_TOKEN:
 app = Flask(__name__)
 
 def tg(method, payload=None, files=None):
-    response = requests.post(f"{API}/{method}", data=payload or {}, files=files, timeout=120)
+    if method == "setWebhook":
+        response = requests.post(f"{API}/{method}", json=payload or {}, timeout=120)
+    else:
+        response = requests.post(f"{API}/{method}", data=payload or {}, files=files, timeout=120)
     response.raise_for_status()
     data = response.json()
     if not data.get("ok"): raise RuntimeError(data)
@@ -145,6 +148,15 @@ def health():
     try:webhook_info=tg("getWebhookInfo").get("result",{})
     except Exception as exc:webhook_info={"error":str(exc)}
     return jsonify({"ok":True,"version":APP_VERSION,"service":"book-quiz-bot","test_mode":TEST_MODE,"webhook_url":WEBHOOK_URL,"webhook_info":webhook_info,"expected_allowed_updates":ALLOWED_UPDATES,"web_app_url":WEB_APP_URL,"telegram_book_count":len(load_books()),"books_db":str(BOOKS_DB_PATH),"books_db_exists":BOOKS_DB_PATH.exists()})
+@app.get("/setup-webhook")
+def setup_webhook_route():
+    try:
+        result=setup_webhook()
+        info=tg("getWebhookInfo").get("result",{})
+        return jsonify({"ok":True,"set_webhook":result,"webhook_info":info,"expected_allowed_updates":ALLOWED_UPDATES})
+    except Exception as exc:
+        log.exception("Manual webhook setup failed")
+        return jsonify({"ok":False,"error":str(exc)}),500
 @app.get("/check-access")
 def check_access():
     user_id=request.args.get("user_id","").strip();return jsonify({"ok":True,"paid":TEST_MODE or (bool(user_id) and is_paid(user_id)),"test_mode":TEST_MODE})
@@ -158,5 +170,7 @@ def setup_webhook():
     try:tg("deleteWebhook",{"drop_pending_updates":False})
     except Exception:log.exception("deleteWebhook failed")
     payload={"url":WEBHOOK_URL,"drop_pending_updates":False,"allowed_updates":json.dumps(ALLOWED_UPDATES,separators=(",",":"))}
-    result=tg("setWebhook",payload);log.info("Webhook configured with allowed_updates=%s: %s",ALLOWED_UPDATES,result);return result
+    result=tg("setWebhook",payload)
+    log.info("Webhook configured with allowed_updates=%s: %s",ALLOWED_UPDATES,result)
+    return result
 if __name__=="__main__":os.execvp("gunicorn",["gunicorn","--workers","1","--bind",f"0.0.0.0:{os.getenv('PORT','10000')}","wsgi:app"])
